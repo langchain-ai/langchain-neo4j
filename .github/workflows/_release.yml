@@ -12,7 +12,7 @@ on:
       working-directory:
         required: true
         type: string
-        default: 'libs/{lib}'
+        default: 'libs/neo4j'
 
 env:
   PYTHON_VERSION: "3.11"
