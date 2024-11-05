@@ -82,6 +82,16 @@ jobs:
       - build
       - test-pypi-publish
     runs-on: ubuntu-latest
+    services:
+      neo4j:
+        image: neo4j:5.24.2
+        env:
+          NEO4J_AUTH: neo4j/pleaseletmein
+          NEO4J_ACCEPT_LICENSE_AGREEMENT: 'eval'
+          NEO4J_PLUGINS: '["apoc"]'
+        ports:
+          - 7687:7687
+          - 7474:7474
     steps:
       - uses: actions/checkout@v4
 
@@ -158,10 +168,6 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
 
       - name: Run integration tests
-        env:
-          NEO4J_URI: ${{ secrets.NEO4J_URI }}
-          NEO4J_USERNAME: ${{ secrets.NEO4J_USERNAME }}
-          NEO4J_PASSWORD: ${{ secrets.NEO4J_PASSWORD }}
         run: make integration_tests
         working-directory: ${{ inputs.working-directory }}
 
