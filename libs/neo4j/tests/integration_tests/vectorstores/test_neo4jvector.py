@@ -35,7 +35,7 @@ OS_TOKEN_COUNT = 1536
 texts = ["foo", "bar", "baz", "It is the end of the world. Take shelter!"]
 
 """
-cd tests/integration_tests/vectorstores/docker-compose
+cd tests/integration_tests/docker-compose
 docker-compose -f neo4j.yml up
 """
 

@@ -93,7 +93,7 @@ def _get_search_index_query(
                 "YIELD node, score "
             ),
             SearchType.HYBRID: (
-                "CALL { "
+                "CALL () { "
                 "CALL db.index.vector.queryNodes($index, $k, $embedding) "
                 "YIELD node, score "
                 "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
