@@ -70,7 +70,7 @@ def test_converting_to_yaml() -> None:
     assert yaml_str == expected_output
 
 
-def test_get_search_index_query_hybrid_node() -> None:
+def test_get_search_index_query_hybrid_node_neo4j_5_23_above() -> None:
     expected_query = (
         "CALL () { "
         "CALL db.index.vector.queryNodes($index, $k, $embedding) "
@@ -87,6 +87,28 @@ def test_get_search_index_query_hybrid_node() -> None:
         "WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
     )
 
-    actual_query = _get_search_index_query(SearchType.HYBRID, IndexType.NODE)
+    actual_query = _get_search_index_query(SearchType.HYBRID, IndexType.NODE, True)
+
+    assert actual_query == expected_query
+
+
+def test_get_search_index_query_hybrid_node_neo4j_5_23_below() -> None:
+    expected_query = (
+        "CALL { "
+        "CALL db.index.vector.queryNodes($index, $k, $embedding) "
+        "YIELD node, score "
+        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
+        "UNWIND nodes AS n "
+        "RETURN n.node AS node, (n.score / max) AS score UNION "
+        "CALL db.index.fulltext.queryNodes($keyword_index, $query, "
+        "{limit: $k}) YIELD node, score "
+        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
+        "UNWIND nodes AS n "
+        "RETURN n.node AS node, (n.score / max) AS score "
+        "} "
+        "WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
+    )
+
+    actual_query = _get_search_index_query(SearchType.HYBRID, IndexType.NODE, False)
 
     assert actual_query == expected_query

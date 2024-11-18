@@ -84,34 +84,39 @@ DEFAULT_INDEX_TYPE = IndexType.NODE
 
 
 def _get_search_index_query(
-    search_type: SearchType, index_type: IndexType = DEFAULT_INDEX_TYPE
+    search_type: SearchType,
+    index_type: IndexType = DEFAULT_INDEX_TYPE,
+    neo4j_version_is_5_23_or_above: bool = False,
 ) -> str:
     if index_type == IndexType.NODE:
-        type_to_query_map = {
-            SearchType.VECTOR: (
+        if search_type == SearchType.VECTOR:
+            return (
                 "CALL db.index.vector.queryNodes($index, $k, $embedding) "
                 "YIELD node, score "
-            ),
-            SearchType.HYBRID: (
-                "CALL () { "
+            )
+        elif search_type == SearchType.HYBRID:
+            call_prefix = "CALL () { " if neo4j_version_is_5_23_or_above else "CALL { "
+
+            query_body = (
                 "CALL db.index.vector.queryNodes($index, $k, $embedding) "
                 "YIELD node, score "
                 "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
                 "UNWIND nodes AS n "
-                # We use 0 as min
                 "RETURN n.node AS node, (n.score / max) AS score UNION "
                 "CALL db.index.fulltext.queryNodes($keyword_index, $query, "
                 "{limit: $k}) YIELD node, score "
                 "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
                 "UNWIND nodes AS n "
-                # We use 0 as min
                 "RETURN n.node AS node, (n.score / max) AS score "
-                "} "
-                # dedup
-                "WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
-            ),
-        }
-        return type_to_query_map[search_type]
+            )
+
+            call_suffix = (
+                "} WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
+            )
+
+            return call_prefix + query_body + call_suffix
+        else:
+            raise ValueError(f"Unsupported SearchType: {search_type}")
     else:
         return (
             "CALL db.index.vector.queryRelationships($index, $k, $embedding) "
@@ -666,6 +671,10 @@ class Neo4jVector(VectorStore):
         else:
             version_tuple = tuple(map(int, version.split(".")))
 
+        self.neo4j_version_is_5_23_or_above = self._check_if_version_5_23_or_above(
+            version_tuple
+        )
+
         target_version = (5, 11, 0)
 
         if version_tuple < target_version:
@@ -681,6 +690,14 @@ class Neo4jVector(VectorStore):
             self.support_metadata_filter = True
         # Flag for enterprise
         self._is_enterprise = True if db_data[0]["edition"] == "enterprise" else False
+
+    def _check_if_version_5_23_or_above(self, version_tuple: tuple[int, ...]) -> bool:
+        """
+        Check if the connected Neo4j database version supports the required features.
+
+        Sets a flag if the connected Neo4j version is 5.23 or above.
+        """
+        return version_tuple >= (5, 23, 0)
 
     def retrieve_existing_index(self) -> Tuple[Optional[int], Optional[str]]:
         """
@@ -1064,7 +1081,9 @@ class Neo4jVector(VectorStore):
             index_query = base_index_query + filter_snippets + base_cosine_query
 
         else:
-            index_query = _get_search_index_query(self.search_type, self._index_type)
+            index_query = _get_search_index_query(
+                self.search_type, self._index_type, self.neo4j_version_is_5_23_or_above
+            )
             filter_params = {}
 
         if self._index_type == IndexType.RELATIONSHIP:
