@@ -7,11 +7,6 @@ from typing import Any, Dict, List, Optional, Union
 
 from langchain.chains.base import Chain
 from langchain.chains.llm import LLMChain
-from langchain_community.chains.graph_qa.prompts import (
-    CYPHER_GENERATION_PROMPT,
-    CYPHER_QA_PROMPT,
-)
-from langchain_community.graphs.graph_store import GraphStore
 from langchain_core.callbacks import CallbackManagerForChainRun
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import (
@@ -34,6 +29,11 @@ from langchain_neo4j.chains.graph_qa.cypher_utils import (
     CypherQueryCorrector,
     Schema,
 )
+from langchain_neo4j.chains.graph_qa.prompts import (
+    CYPHER_GENERATION_PROMPT,
+    CYPHER_QA_PROMPT,
+)
+from langchain_neo4j.graphs.graph_store import GraphStore
 
 INTERMEDIATE_STEPS_KEY = "intermediate_steps"
 

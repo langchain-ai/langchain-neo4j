@@ -16,16 +16,14 @@ from typing import (
 )
 
 import numpy as np
-from langchain_community.vectorstores.utils import (
-    DistanceStrategy,
-    maximal_marginal_relevance,
-)
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.utils import get_from_dict_or_env
 from langchain_core.vectorstores import VectorStore
+from langchain_core.vectorstores.utils import maximal_marginal_relevance
 
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
+from langchain_neo4j.vectorstores.utils import DistanceStrategy
 
 DEFAULT_DISTANCE_STRATEGY = DistanceStrategy.COSINE
 DISTANCE_MAPPING = {
@@ -468,7 +466,7 @@ class Neo4jVector(VectorStore):
         .. code-block:: python
 
             from langchain_neo4j import Neo4jVector
-            from langchain_community.embeddings.openai import OpenAIEmbeddings
+            from langchain_openai import OpenAIEmbeddings
 
             url="bolt://localhost:7687"
             username="neo4j"
@@ -1253,7 +1251,8 @@ class Neo4jVector(VectorStore):
             .. code-block:: python
 
                 from langchain_neo4j import Neo4jVector
-                from langchain_community.embeddings import OpenAIEmbeddings
+                from langchain_openai import OpenAIEmbeddings
+
                 embeddings = OpenAIEmbeddings()
                 text_embeddings = embeddings.embed_documents(texts)
                 text_embedding_pairs = list(zip(texts, text_embeddings))

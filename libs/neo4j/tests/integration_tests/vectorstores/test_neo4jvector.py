@@ -4,7 +4,6 @@ import os
 from math import isclose
 from typing import Any, Dict, List, cast
 
-from langchain_community.vectorstores.utils import DistanceStrategy
 from langchain_core.documents import Document
 from yaml import safe_load
 
@@ -14,6 +13,7 @@ from langchain_neo4j.vectorstores.neo4j_vector import (
     SearchType,
     _get_search_index_query,
 )
+from langchain_neo4j.vectorstores.utils import DistanceStrategy
 from tests.integration_tests.vectorstores.fake_embeddings import (
     AngularTwoDimensionalEmbeddings,
     FakeEmbeddings,
