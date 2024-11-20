@@ -903,17 +903,7 @@ class Neo4jVector(VectorStore):
         if not metadatas:
             metadatas = [{} for _ in texts]
 
-        import_query = (
-            "UNWIND $data AS row "
-            "CALL (row) { WITH row "
-            f"MERGE (c:`{self.node_label}` {{id: row.id}}) "
-            "WITH c, row "
-            f"CALL db.create.setNodeVectorProperty(c, "
-            f"'{self.embedding_node_property}', row.embedding) "
-            f"SET c.`{self.text_node_property}` = row.text "
-            "SET c += row.metadata "
-            "} IN TRANSACTIONS OF 1000 ROWS "
-        )
+        import_query = self._build_import_query()
 
         parameters = {
             "data": [
@@ -927,6 +917,32 @@ class Neo4jVector(VectorStore):
         self.query(import_query, params=parameters)
 
         return ids
+
+    def _build_import_query(self) -> str:
+        """
+        Build the Cypher import query string based on the Neo4j version.
+
+        Returns:
+            str: The constructed Cypher query string.
+        """
+        if self.neo4j_version_is_5_23_or_above:
+            call_prefix = "CALL (row) { "
+        else:
+            call_prefix = "CALL { WITH row "
+
+        import_query = (
+            "UNWIND $data AS row "
+            f"{call_prefix}"
+            f"MERGE (c:`{self.node_label}` {{id: row.id}}) "
+            "WITH c, row "
+            f"CALL db.create.setNodeVectorProperty(c, "
+            f"'{self.embedding_node_property}', row.embedding) "
+            f"SET c.`{self.text_node_property}` = row.text "
+            "SET c += row.metadata "
+            "} IN TRANSACTIONS OF 1000 ROWS "
+        )
+
+        return import_query
 
     def add_texts(
         self,
