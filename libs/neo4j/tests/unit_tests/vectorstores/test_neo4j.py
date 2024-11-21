@@ -189,3 +189,31 @@ def test_build_import_query_version_below_5_23(mock_vector_store: Neo4jVector) -
     actual_query = mock_vector_store._build_import_query()
 
     assert actual_query == expected_query
+
+
+def test_build_delete_query_version_is_or_above_5_23(
+    mock_vector_store: Neo4jVector,
+) -> None:
+    mock_vector_store.neo4j_version_is_5_23_or_above = True
+    expected_query = (
+        f"MATCH (n:`{mock_vector_store.node_label}`) "
+        "CALL (n) { DETACH DELETE n } "
+        "IN TRANSACTIONS OF 10000 ROWS;"
+    )
+
+    actual_query = mock_vector_store._build_delete_query()
+
+    assert actual_query == expected_query
+
+
+def test_build_delete_query_version_below_5_23(mock_vector_store: Neo4jVector) -> None:
+    mock_vector_store.neo4j_version_is_5_23_or_above = False
+    expected_query = (
+        f"MATCH (n:`{mock_vector_store.node_label}`) "
+        "CALL { WITH n DETACH DELETE n } "
+        "IN TRANSACTIONS OF 10000 ROWS;"
+    )
+
+    actual_query = mock_vector_store._build_delete_query()
+
+    assert actual_query == expected_query

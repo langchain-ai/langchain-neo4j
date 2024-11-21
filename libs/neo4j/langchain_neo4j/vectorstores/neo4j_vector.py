@@ -594,16 +594,28 @@ class Neo4jVector(VectorStore):
         if pre_delete_collection:
             from neo4j.exceptions import DatabaseError
 
-            self.query(
-                f"MATCH (n:`{self.node_label}`) "
-                "CALL (n) { DETACH DELETE n } "
-                "IN TRANSACTIONS OF 10000 ROWS;"
-            )
+            delete_query = self._build_delete_query()
+            self.query(delete_query)
             # Delete index
             try:
                 self.query(f"DROP INDEX {self.index_name}")
             except DatabaseError:  # Index didn't exist yet
                 pass
+
+    def _build_delete_query(self) -> str:
+        if self.neo4j_version_is_5_23_or_above:
+            query = (
+                f"MATCH (n:`{self.node_label}`) "
+                "CALL (n) { DETACH DELETE n } "
+                "IN TRANSACTIONS OF 10000 ROWS;"
+            )
+        else:
+            query = (
+                f"MATCH (n:`{self.node_label}`) "
+                "CALL { WITH n DETACH DELETE n } "
+                "IN TRANSACTIONS OF 10000 ROWS;"
+            )
+        return query
 
     def query(
         self,
