@@ -54,7 +54,6 @@ optional = true
 
 [tool.poetry.group.dev.dependencies]
 langchain-core = {git = "https://github.com/langchain-ai/langchain.git", subdirectory = "libs/core"}
-langchain-openai = "^0.2.8"
 
 [tool.ruff.lint]
 select = [
