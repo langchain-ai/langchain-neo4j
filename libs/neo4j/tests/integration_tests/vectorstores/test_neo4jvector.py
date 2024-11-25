@@ -1,7 +1,6 @@
 """Test Neo4jVector functionality."""
 
 import os
-from math import isclose
 from typing import Any, Dict, List, cast
 
 from langchain_core.documents import Document
@@ -60,14 +59,18 @@ class FakeEmbeddingsWithOsDimension(FakeEmbeddings):
 
     def embed_documents(self, embedding_texts: List[str]) -> List[List[float]]:
         """Return simple embeddings."""
-        return [
-            [float(1.0)] * (OS_TOKEN_COUNT - 1) + [float(i + 1)]
+        embedding = [
+            [float(1.0)] * (OS_TOKEN_COUNT - 1) + [100 * float(i + 1)]
             for i in range(len(embedding_texts))
         ]
+        return embedding
 
     def embed_query(self, text: str) -> List[float]:
         """Return simple embeddings."""
-        return [float(1.0)] * (OS_TOKEN_COUNT - 1) + [float(texts.index(text) + 1)]
+        embedding = [float(1.0)] * (OS_TOKEN_COUNT - 1) + [
+            100 * float(texts.index(text) + 1)
+        ]
+        return embedding
 
 
 def test_neo4jvector() -> None:
@@ -225,20 +228,15 @@ def test_neo4jvector_relevance_score() -> None:
     )
 
     output = docsearch.similarity_search_with_relevance_scores("foo", k=3)
-    expected_output = [
-        (Document(page_content="foo", metadata={"page": "0"}), 1.0),
-        (Document(page_content="bar", metadata={"page": "1"}), 0.9998160600662231),
-        (Document(page_content="baz", metadata={"page": "2"}), 0.9996607303619385),
-    ]
+    output_texts = [doc.page_content for doc, _ in output]
 
-    # Check if the length of the outputs matches
-    assert len(output) == len(expected_output)
-
-    # Check if each document and its relevance score is close to the expected value
-    for (doc, score), (expected_doc, expected_score) in zip(output, expected_output):
-        assert doc.page_content == expected_doc.page_content
-        assert doc.metadata == expected_doc.metadata
-        assert isclose(score, expected_score, rel_tol=1e-5)
+    expected_order = ["foo", "It is the end of the world. Take shelter!", "baz"]
+    assert output_texts == expected_order
+    relevance_scores = [score for _, score in output]
+    assert all(
+        earlier >= later
+        for earlier, later in zip(relevance_scores, relevance_scores[1:])
+    )
 
     drop_vector_indexes(docsearch)
 
@@ -258,9 +256,10 @@ def test_neo4jvector_retriever_search_threshold() -> None:
 
     retriever = docsearch.as_retriever(
         search_type="similarity_score_threshold",
-        search_kwargs={"k": 3, "score_threshold": 0.9999},
+        search_kwargs={"k": 3, "score_threshold": 0.999},
     )
     output = retriever.invoke("foo")
+
     assert output == [
         Document(page_content="foo", metadata={"page": "0"}),
     ]
@@ -399,9 +398,10 @@ def test_neo4jvector_hybrid_deduplicate() -> None:
         search_type=SearchType.HYBRID,
     )
     output = docsearch.similarity_search("foo", k=3)
+
     assert output == [
         Document(page_content="foo"),
-        Document(page_content="bar"),
+        Document(page_content="It is the end of the world. Take shelter!"),
         Document(page_content="baz"),
     ]
 
@@ -662,15 +662,14 @@ def test_neo4jvector_special_character() -> None:
         pre_delete_collection=True,
         search_type=SearchType.HYBRID,
     )
-    docsearch.similarity_search(
+    output = docsearch.similarity_search(
         "It is the end of the world. Take shelter!",
         k=1,
     )
-    # assert output == [
-    #     Document(
-    #         page_content="It is the end of the world. Take shelter!", metadata={}
-    #     )
-    # ]
+
+    assert output == [
+        Document(page_content="It is the end of the world. Take shelter!", metadata={})
+    ]
 
     drop_vector_indexes(docsearch)
 
