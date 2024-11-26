@@ -2,6 +2,8 @@
 
 ## Next
 
+## 0.1.1
+
 ### Changed
 
 - Removed dependency on LangChain Community package by integrating necessary components directly into the LangChain Neo4j codebase.
