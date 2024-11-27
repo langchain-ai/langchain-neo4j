@@ -837,20 +837,7 @@ class Neo4jGraph(GraphStore):
         """
         Explicitly close the Neo4j driver connection.
         
-        This method releases the underlying database connection resources.
-        It is recommended to call this method when you are done using the graph
-        to prevent resource leaks and ensure proper cleanup.
-        
-        Best practices:
-        - Use within a try-finally block
-        - Prefer using the context manager (with statement)
-        
-        Example:
-            graph = Neo4jGraph(...)
-            try:
-                graph.query(...)
-            finally:
-                graph.close()
+        Delegates connection management to the Neo4j driver.
         """
         if hasattr(self, '_driver'):
             self._driver.close()
