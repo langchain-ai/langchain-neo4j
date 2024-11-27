@@ -1,5 +1,5 @@
 from hashlib import md5
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 from langchain_core.utils import get_from_dict_or_env
 
@@ -403,12 +403,14 @@ class Neo4jGraph(GraphStore):
     def _check_driver_state(self) -> None:
         """
         Check if the driver is available and ready for operations.
-        
+
         Raises:
             RuntimeError: If the driver has been closed or is not initialized.
         """
-        if not hasattr(self, '_driver'):
-            raise RuntimeError("Cannot perform operations - Neo4j connection has been closed")
+        if not hasattr(self, "_driver"):
+            raise RuntimeError(
+                "Cannot perform operations - Neo4j connection has been closed"
+            )
 
     @property
     def get_schema(self) -> str:
@@ -481,7 +483,7 @@ class Neo4jGraph(GraphStore):
     def refresh_schema(self) -> None:
         """
         Refreshes the Neo4j graph schema information.
-        
+
         Raises:
             RuntimeError: If the connection has been closed.
         """
@@ -836,64 +838,69 @@ class Neo4jGraph(GraphStore):
     def close(self) -> None:
         """
         Explicitly close the Neo4j driver connection.
-        
+
         Delegates connection management to the Neo4j driver.
         """
-        if hasattr(self, '_driver'):
+        if hasattr(self, "_driver"):
             self._driver.close()
             # Remove the driver attribute to indicate closure
-            delattr(self, '_driver')
+            delattr(self, "_driver")
 
-    def __enter__(self):
+    def __enter__(self) -> "Neo4jGraph":
         """
         Enter the runtime context for the Neo4j graph connection.
-        
+
         Enables use of the graph connection with the 'with' statement.
         This method allows for automatic resource management and ensures
         that the connection is properly handled.
-        
+
         Returns:
             Neo4jGraph: The current graph connection instance
-        
+
         Example:
             with Neo4jGraph(...) as graph:
                 graph.query(...)  # Connection automatically managed
         """
         return self
 
-    def __exit__(self, exc_type, exc_val, exc_tb):
+    def __exit__(
+        self,
+        exc_type: Optional[Type[BaseException]],
+        exc_val: Optional[BaseException],
+        exc_tb: Optional[Any],
+    ) -> None:
         """
         Exit the runtime context for the Neo4j graph connection.
-        
+
         This method is automatically called when exiting a 'with' statement.
-        It ensures that the database connection is closed, regardless of 
+        It ensures that the database connection is closed, regardless of
         whether an exception occurred during the context's execution.
-        
+
         Args:
-            exc_type: The type of exception that caused the context to exit 
+            exc_type: The type of exception that caused the context to exit
                       (None if no exception occurred)
-            exc_val: The exception instance that caused the context to exit 
+            exc_val: The exception instance that caused the context to exit
                      (None if no exception occurred)
             exc_tb: The traceback for the exception (None if no exception occurred)
-        
+
         Note:
             Any exception is re-raised after the connection is closed.
         """
         self.close()
 
-    def __del__(self):
+    def __del__(self) -> None:
         """
         Destructor for the Neo4j graph connection.
-        
-        This method is called during garbage collection to ensure that 
+
+        This method is called during garbage collection to ensure that
         database resources are released if not explicitly closed.
-        
+
         Caution:
             - Do not rely on this method for deterministic resource cleanup
             - Always prefer explicit .close() or context manager
-        
+
         Best practices:
-            1. Use context manager: 
+            1. Use context manager:
                with Neo4jGraph(...) as graph:
                    ...
             2. Explicitly close:
@@ -903,4 +910,8 @@ class Neo4jGraph(GraphStore):
                finally:
                    graph.close()
         """
-        self.close()
+        try:
+            self.close()
+        except Exception:
+            # Suppress any exceptions during garbage collection
+            pass
