@@ -2,6 +2,11 @@
 
 ## Next
 
+### Added
+
+- Enhanced Neo4j driver connection management with more robust error handling
+- Simplified connection state checking in Neo4jGraph
+
 ## 0.1.1
 
 ### Changed
