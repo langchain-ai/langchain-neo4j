@@ -6,7 +6,6 @@ import re
 from typing import Any, Dict, List, Optional, Union
 
 from langchain.chains.base import Chain
-from langchain.chains.llm import LLMChain
 from langchain_core.callbacks import CallbackManagerForChainRun
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import (
@@ -165,8 +164,8 @@ class GraphCypherQAChain(Chain):
     """
 
     graph: GraphStore = Field(exclude=True)
-    cypher_generation_chain: LLMChain
-    qa_chain: Union[LLMChain, Runnable]
+    cypher_generation_chain: Runnable
+    qa_chain: Runnable
     graph_schema: str
     input_key: str = "query"  #: :meta private:
     output_key: str = "result"  #: :meta private:
@@ -261,28 +260,34 @@ class GraphCypherQAChain(Chain):
                 "You can specify up to two of 'cypher_llm', 'qa_llm'"
                 ", and 'llm', but not all three simultaneously."
             )
-        if cypher_prompt and cypher_llm_kwargs:
-            raise ValueError(
-                "Specifying cypher_prompt and cypher_llm_kwargs together is"
-                " not allowed. Please pass prompt via cypher_llm_kwargs."
-            )
-        if qa_prompt and qa_llm_kwargs:
-            raise ValueError(
-                "Specifying qa_prompt and qa_llm_kwargs together is"
-                " not allowed. Please pass prompt via qa_llm_kwargs."
-            )
+        if cypher_prompt:
+            if cypher_llm_kwargs:
+                raise ValueError(
+                    "Specifying cypher_prompt and cypher_llm_kwargs together is"
+                    " not allowed. Please pass prompt via cypher_llm_kwargs."
+                )
+        else:
+            if cypher_llm_kwargs:
+                cypher_prompt = cypher_llm_kwargs.pop(
+                    "prompt", CYPHER_GENERATION_PROMPT
+                )
+            else:
+                cypher_prompt = CYPHER_GENERATION_PROMPT
+        if qa_prompt:
+            if qa_llm_kwargs:
+                raise ValueError(
+                    "Specifying qa_prompt and qa_llm_kwargs together is"
+                    " not allowed. Please pass prompt via qa_llm_kwargs."
+                )
+        else:
+            if qa_llm_kwargs:
+                qa_prompt = qa_llm_kwargs.pop("prompt", CYPHER_QA_PROMPT)
+            else:
+                qa_prompt = CYPHER_QA_PROMPT
         use_qa_llm_kwargs = qa_llm_kwargs if qa_llm_kwargs is not None else {}
         use_cypher_llm_kwargs = (
             cypher_llm_kwargs if cypher_llm_kwargs is not None else {}
         )
-        if "prompt" not in use_qa_llm_kwargs:
-            use_qa_llm_kwargs["prompt"] = (
-                qa_prompt if qa_prompt is not None else CYPHER_QA_PROMPT
-            )
-        if "prompt" not in use_cypher_llm_kwargs:
-            use_cypher_llm_kwargs["prompt"] = (
-                cypher_prompt if cypher_prompt is not None else CYPHER_GENERATION_PROMPT
-            )
 
         qa_llm = qa_llm or llm
         if use_function_response:
@@ -299,11 +304,11 @@ class GraphCypherQAChain(Chain):
             except (NotImplementedError, AttributeError):
                 raise ValueError("Provided LLM does not support native tools/functions")
         else:
-            qa_chain = LLMChain(llm=qa_llm, **use_qa_llm_kwargs)  # type: ignore[arg-type]
+            qa_chain = qa_prompt | qa_llm.bind(**use_qa_llm_kwargs) | StrOutputParser()  # type: ignore
 
-        cypher_generation_chain = LLMChain(
-            llm=cypher_llm or llm,  # type: ignore[arg-type]
-            **use_cypher_llm_kwargs,  # type: ignore[arg-type]
+        cypher_llm = cypher_llm or llm
+        cypher_generation_chain = (
+            cypher_prompt | cypher_llm.bind(**use_cypher_llm_kwargs) | StrOutputParser()  # type: ignore
         )
 
         if exclude_types and include_types:
@@ -349,7 +354,9 @@ class GraphCypherQAChain(Chain):
 
         intermediate_steps: List = []
 
-        generated_cypher = self.cypher_generation_chain.run(args, callbacks=callbacks)
+        generated_cypher = self.cypher_generation_chain.invoke(
+            args, callbacks=callbacks
+        )
 
         # Extract Cypher code if it is wrapped in backticks
         generated_cypher = extract_cypher(generated_cypher)
@@ -391,7 +398,7 @@ class GraphCypherQAChain(Chain):
                     {"question": question, "context": context},
                     callbacks=callbacks,
                 )
-                final_result = result[self.qa_chain.output_key]  # type: ignore
+                final_result = result  # type: ignore
 
         chain_result: Dict[str, Any] = {self.output_key: final_result}
         if self.return_intermediate_steps:
