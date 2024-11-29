@@ -402,9 +402,9 @@ def test_backticks() -> None:
 
 def test_neo4j_context_manager() -> None:
     """Test that Neo4jGraph works correctly with context manager."""
-    url = os.environ.get("NEO4J_URI")
-    username = os.environ.get("NEO4J_USERNAME")
-    password = os.environ.get("NEO4J_PASSWORD")
+    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    username = os.environ.get("NEO4J_USERNAME", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
     assert url is not None
     assert username is not None
     assert password is not None
@@ -423,9 +423,9 @@ def test_neo4j_context_manager() -> None:
 
 def test_neo4j_explicit_close() -> None:
     """Test that Neo4jGraph can be explicitly closed."""
-    url = os.environ.get("NEO4J_URI")
-    username = os.environ.get("NEO4J_USERNAME")
-    password = os.environ.get("NEO4J_PASSWORD")
+    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    username = os.environ.get("NEO4J_USERNAME", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
     assert url is not None
     assert username is not None
     assert password is not None
@@ -447,9 +447,9 @@ def test_neo4j_explicit_close() -> None:
 
 def test_neo4j_error_after_close() -> None:
     """Test that Neo4jGraph operations raise proper errors after closing."""
-    url = os.environ.get("NEO4J_URI")
-    username = os.environ.get("NEO4J_USERNAME")
-    password = os.environ.get("NEO4J_PASSWORD")
+    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    username = os.environ.get("NEO4J_USERNAME", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
     assert url is not None
     assert username is not None
     assert password is not None
@@ -482,9 +482,9 @@ def test_neo4j_error_after_close() -> None:
 
 def test_neo4j_concurrent_connections() -> None:
     """Test that multiple Neo4jGraph instances can be used independently."""
-    url = os.environ.get("NEO4J_URI")
-    username = os.environ.get("NEO4J_USERNAME")
-    password = os.environ.get("NEO4J_PASSWORD")
+    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    username = os.environ.get("NEO4J_USERNAME", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
     assert url is not None
     assert username is not None
     assert password is not None
@@ -510,9 +510,9 @@ def test_neo4j_concurrent_connections() -> None:
 
 def test_neo4j_nested_context_managers() -> None:
     """Test that nested context managers work correctly."""
-    url = os.environ.get("NEO4J_URI")
-    username = os.environ.get("NEO4J_USERNAME")
-    password = os.environ.get("NEO4J_PASSWORD")
+    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    username = os.environ.get("NEO4J_USERNAME", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
     assert url is not None
     assert username is not None
     assert password is not None
@@ -546,9 +546,9 @@ def test_neo4j_nested_context_managers() -> None:
 
 def test_neo4j_multiple_close() -> None:
     """Test that Neo4jGraph can be closed multiple times without error."""
-    url = os.environ.get("NEO4J_URI")
-    username = os.environ.get("NEO4J_USERNAME")
-    password = os.environ.get("NEO4J_PASSWORD")
+    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    username = os.environ.get("NEO4J_USERNAME", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
     assert url is not None
     assert username is not None
     assert password is not None
