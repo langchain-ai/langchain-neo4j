@@ -3,8 +3,6 @@
 import os
 from unittest.mock import MagicMock
 
-import pytest
-from langchain.chains.loading import load_chain
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.outputs import Generation, LLMResult
 
