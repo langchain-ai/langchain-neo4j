@@ -26,6 +26,7 @@ pytest-asyncio = "^0.23.2"
 pytest-socket = "^0.7.0"
 pytest-watcher = "^0.3.4"
 langchain-core = {git = "https://github.com/langchain-ai/langchain.git", subdirectory = "libs/core"}
+pytest-cov = "^6.0.0"
 
 [tool.poetry.group.codespell]
 optional = true
@@ -82,7 +83,7 @@ build-backend = "poetry.core.masonry.api"
 #                       section of the configuration file raise errors.
 #
 # https://github.com/tophat/syrupy
-addopts = "--strict-markers --strict-config --durations=5"
+addopts = "--strict-markers --strict-config --durations=5 --cov=langchain_neo4j --cov-report=html --cov-report=term"
 # Registering custom markers.
 # https://docs.pytest.org/en/7.1.x/example/markers.html#registering-markers
 markers = [

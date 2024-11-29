@@ -345,10 +345,10 @@ def _handle_field_filter(
             query_snippet = f"toLower(n.`{field}`) CONTAINS $param_{param_number}"
             query_param = {f"param_{param_number}": filter_value.rstrip("%")}
             return (query_snippet, query_param)
-        else:
-            raise NotImplementedError()
     else:
         raise NotImplementedError()
+
+    raise NotImplementedError("Unhandled operator")
 
 
 def construct_metadata_filter(filter: Dict[str, Any]) -> Tuple[str, Dict]:
@@ -386,7 +386,7 @@ def construct_metadata_filter(filter: Dict[str, Any]) -> Tuple[str, Dict]:
                 and_ = combine_queries(
                     [construct_metadata_filter(el) for el in value], "AND"
                 )
-                if len(and_) >= 1:
+                if len(and_[0]) >= 1:
                     return and_
                 else:
                     raise ValueError(
@@ -397,7 +397,7 @@ def construct_metadata_filter(filter: Dict[str, Any]) -> Tuple[str, Dict]:
                 or_ = combine_queries(
                     [construct_metadata_filter(el) for el in value], "OR"
                 )
-                if len(or_) >= 1:
+                if len(or_[0]) >= 1:
                     return or_
                 else:
                     raise ValueError(
@@ -422,7 +422,7 @@ def construct_metadata_filter(filter: Dict[str, Any]) -> Tuple[str, Dict]:
                     for index, (k, v) in enumerate(filter.items())
                 ]
             )
-            if len(and_multiple) >= 1:
+            if len(and_multiple[0]) >= 1:
                 return " AND ".join(and_multiple[0]), and_multiple[1]
             else:
                 raise ValueError(
@@ -862,7 +862,7 @@ class Neo4jVector(VectorStore):
             embedding_dimension and not store.embedding_dimension == embedding_dimension
         ):
             raise ValueError(
-                f"Index with name {store.index_name} already exists."
+                f"Index with name {store.index_name} already exists. "
                 "The provided embedding function and vector index "
                 "dimensions do not match.\n"
                 f"Embedding function dimension: {store.embedding_dimension}\n"
@@ -1539,7 +1539,7 @@ class Neo4jVector(VectorStore):
             embedding_dimension and not store.embedding_dimension == embedding_dimension
         ):
             raise ValueError(
-                f"Index with name {store.index_name} already exists."
+                f"Index with name {store.index_name} already exists. "
                 "The provided embedding function and vector index "
                 "dimensions do not match.\n"
                 f"Embedding function dimension: {store.embedding_dimension}\n"
