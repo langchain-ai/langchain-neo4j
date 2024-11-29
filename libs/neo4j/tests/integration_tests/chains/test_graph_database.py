@@ -222,37 +222,6 @@ def test_cypher_return_direct() -> None:
     assert output == expected_output
 
 
-@pytest.mark.skip(reason="load_chain is failing and is due to be deprecated")
-def test_cypher_save_load() -> None:
-    """Test saving and loading."""
-
-    FILE_PATH = "cypher.yaml"
-    url = os.environ.get("NEO4J_URI")
-    username = os.environ.get("NEO4J_USERNAME")
-    password = os.environ.get("NEO4J_PASSWORD")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
-    graph = Neo4jGraph(
-        url=url,
-        username=username,
-        password=password,
-    )
-    llm = MagicMock(spec=BaseLanguageModel)
-    chain = GraphCypherQAChain.from_llm(
-        llm=llm,
-        graph=graph,
-        return_direct=True,
-        allow_dangerous_requests=True,
-    )
-
-    chain.save(file_path=FILE_PATH)
-    qa_loaded = load_chain(FILE_PATH, graph=graph)
-
-    assert qa_loaded == chain
-
-
 def test_exclude_types() -> None:
     """Test exclude types from schema."""
     url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
