@@ -70,8 +70,10 @@ def test_graph_cypher_qa_chain_prompt_selection_1() -> None:
         cypher_prompt=cypher_prompt,
         allow_dangerous_requests=True,
     )
-    assert chain.qa_chain.first == qa_prompt  # type: ignore[attr-defined]
-    assert chain.cypher_generation_chain.first == cypher_prompt  # type: ignore[attr-defined]
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == qa_prompt
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == cypher_prompt
 
 
 def test_graph_cypher_qa_chain_prompt_selection_2() -> None:
@@ -83,8 +85,10 @@ def test_graph_cypher_qa_chain_prompt_selection_2() -> None:
         return_intermediate_steps=False,
         allow_dangerous_requests=True,
     )
-    assert chain.qa_chain.first == CYPHER_QA_PROMPT  # type: ignore[attr-defined]
-    assert chain.cypher_generation_chain.first == CYPHER_GENERATION_PROMPT  # type: ignore[attr-defined]
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == CYPHER_QA_PROMPT
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == CYPHER_GENERATION_PROMPT
 
 
 def test_graph_cypher_qa_chain_prompt_selection_3() -> None:
@@ -100,8 +104,10 @@ def test_graph_cypher_qa_chain_prompt_selection_3() -> None:
         qa_llm_kwargs={"memory": readonlymemory},
         allow_dangerous_requests=True,
     )
-    assert chain.qa_chain.first == CYPHER_QA_PROMPT  # type: ignore[attr-defined]
-    assert chain.cypher_generation_chain.first == CYPHER_GENERATION_PROMPT  # type: ignore[attr-defined]
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == CYPHER_QA_PROMPT
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == CYPHER_GENERATION_PROMPT
 
 
 def test_graph_cypher_qa_chain_prompt_selection_4() -> None:
@@ -121,8 +127,10 @@ def test_graph_cypher_qa_chain_prompt_selection_4() -> None:
         qa_llm_kwargs={"prompt": qa_prompt, "memory": readonlymemory},
         allow_dangerous_requests=True,
     )
-    assert chain.qa_chain.first == qa_prompt  # type: ignore[attr-defined]
-    assert chain.cypher_generation_chain.first == cypher_prompt  # type: ignore[attr-defined]
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == qa_prompt
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == cypher_prompt
 
 
 def test_graph_cypher_qa_chain_prompt_selection_5() -> None:
@@ -168,8 +176,10 @@ def test_graph_cypher_qa_chain_prompt_selection_6() -> None:
         function_response_system=function_response_system,
         allow_dangerous_requests=True,
     )
-    assert chain.qa_chain.first == response_prompt  # type: ignore[attr-defined]
-    assert chain.cypher_generation_chain.first == CYPHER_GENERATION_PROMPT  # type: ignore[attr-defined]
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == response_prompt
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == CYPHER_GENERATION_PROMPT
 
 
 def test_graph_cypher_qa_chain() -> None:
