@@ -6,6 +6,7 @@
 
 - Enhanced Neo4j driver connection management with more robust error handling
 - Simplified connection state checking in Neo4jGraph
+- Introduced `effective_search_ratio` parameter in Neo4jVector to enhance query accuracy by adjusting the candidate pool size during similarity searches.
 
 ## 0.1.1
 
