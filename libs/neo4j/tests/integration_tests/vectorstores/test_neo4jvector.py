@@ -993,6 +993,7 @@ def test_neo4j_max_marginal_relevance_search() -> None:
 
     drop_vector_indexes(docsearch)
 
+
 def test_neo4jvector_effective_search_ratio() -> None:
     """Test effective search parameter."""
     docsearch = Neo4jVector.from_texts(
@@ -1008,6 +1009,7 @@ def test_neo4jvector_effective_search_ratio() -> None:
     assert len(output) == 2
 
     drop_vector_indexes(docsearch)
+
 
 def test_neo4jvector_passing_graph_object() -> None:
     """Test end to end construction and search with passing graph object."""
