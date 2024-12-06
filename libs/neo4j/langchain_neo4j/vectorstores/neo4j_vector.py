@@ -89,15 +89,17 @@ def _get_search_index_query(
     if index_type == IndexType.NODE:
         if search_type == SearchType.VECTOR:
             return (
-                "CALL db.index.vector.queryNodes($index, $k, $embedding) "
+                "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
                 "YIELD node, score "
+                "WITH node, score LIMIT $k "
             )
         elif search_type == SearchType.HYBRID:
             call_prefix = "CALL () { " if neo4j_version_is_5_23_or_above else "CALL { "
 
             query_body = (
-                "CALL db.index.vector.queryNodes($index, $k, $embedding) "
+                "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
                 "YIELD node, score "
+                "WITH node, score LIMIT $k "
                 "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
                 "UNWIND nodes AS n "
                 "RETURN n.node AS node, (n.score / max) AS score UNION "
@@ -117,8 +119,9 @@ def _get_search_index_query(
             raise ValueError(f"Unsupported SearchType: {search_type}")
     else:
         return (
-            "CALL db.index.vector.queryRelationships($index, $k, $embedding) "
+            "CALL db.index.vector.queryRelationships($index, $k * $ef, $embedding) "
             "YIELD relationship, score "
+            "WITH relationship, score LIMIT $k "
         )
 
 
@@ -461,6 +464,8 @@ class Neo4jVector(VectorStore):
             'NODE' or 'RELATIONSHIP'
         pre_delete_collection: If True, will delete existing data if it exists.
             (default: False). Useful for testing.
+        effective_search_ratio: Controls the candidate pool size by multiplying $k
+            to balance query accuracy and performance.
 
     Example:
         .. code-block:: python
@@ -504,6 +509,7 @@ class Neo4jVector(VectorStore):
         relevance_score_fn: Optional[Callable[[float], float]] = None,
         index_type: IndexType = DEFAULT_INDEX_TYPE,
         graph: Optional[Neo4jGraph] = None,
+        effective_search_ratio: int = 1,
     ) -> None:
         try:
             import neo4j
@@ -587,6 +593,7 @@ class Neo4jVector(VectorStore):
         self.retrieval_query = retrieval_query
         self.search_type = search_type
         self._index_type = index_type
+        self.effective_search_ratio = effective_search_ratio
         # Calculate embedding dimension
         self.embedding_dimension = len(embedding.embed_query("foo"))
 
@@ -1154,6 +1161,7 @@ class Neo4jVector(VectorStore):
             "embedding": embedding,
             "keyword_index": self.keyword_index_name,
             "query": remove_lucene_chars(kwargs["query"]),
+            "ef": self.effective_search_ratio,
             **params,
             **filter_params,
         }

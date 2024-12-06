@@ -701,6 +701,7 @@ def test_hybrid_score_normalization() -> None:
             "index": "vector",
             "k": 1,
             "embedding": FakeEmbeddingsWithOsDimension().embed_query("foo"),
+            "ef": 1,
             "query": "foo",
             "keyword_index": "keyword",
         },
@@ -992,6 +993,21 @@ def test_neo4j_max_marginal_relevance_search() -> None:
 
     drop_vector_indexes(docsearch)
 
+def test_neo4jvector_effective_search_ratio() -> None:
+    """Test effective search parameter."""
+    docsearch = Neo4jVector.from_texts(
+        texts=texts,
+        embedding=FakeEmbeddingsWithOsDimension(),
+        url=url,
+        username=username,
+        password=password,
+        pre_delete_collection=True,
+        effective_search_ratio=2,
+    )
+    output = docsearch.similarity_search("foo", k=2)
+    assert len(output) == 2
+
+    drop_vector_indexes(docsearch)
 
 def test_neo4jvector_passing_graph_object() -> None:
     """Test end to end construction and search with passing graph object."""
