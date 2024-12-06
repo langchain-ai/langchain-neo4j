@@ -509,7 +509,6 @@ class Neo4jVector(VectorStore):
         relevance_score_fn: Optional[Callable[[float], float]] = None,
         index_type: IndexType = DEFAULT_INDEX_TYPE,
         graph: Optional[Neo4jGraph] = None,
-        effective_search_ratio: int = 1,
     ) -> None:
         try:
             import neo4j
@@ -593,7 +592,7 @@ class Neo4jVector(VectorStore):
         self.retrieval_query = retrieval_query
         self.search_type = search_type
         self._index_type = index_type
-        self.effective_search_ratio = effective_search_ratio
+
         # Calculate embedding dimension
         self.embedding_dimension = len(embedding.embed_query("foo"))
 
@@ -991,6 +990,7 @@ class Neo4jVector(VectorStore):
         k: int = 4,
         params: Dict[str, Any] = {},
         filter: Optional[Dict[str, Any]] = None,
+        effective_search_ratio: int = 1,
         **kwargs: Any,
     ) -> List[Document]:
         """Run similarity search with Neo4jVector.
@@ -1003,7 +1003,9 @@ class Neo4jVector(VectorStore):
             filter (Optional[Dict[str, Any]]): Dictionary of argument(s) to
                     filter on metadata.
                 Defaults to None.
-
+            effective_search_ratio (int): Controls the candidate pool size
+               by multiplying $k to balance query accuracy and performance.
+               Defaults to 1.
         Returns:
             List of Documents most similar to the query.
         """
@@ -1014,6 +1016,7 @@ class Neo4jVector(VectorStore):
             query=query,
             params=params,
             filter=filter,
+            effective_search_ratio=effective_search_ratio,
             **kwargs,
         )
 
@@ -1023,6 +1026,7 @@ class Neo4jVector(VectorStore):
         k: int = 4,
         params: Dict[str, Any] = {},
         filter: Optional[Dict[str, Any]] = None,
+        effective_search_ratio: int = 1,
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         """Return docs most similar to query.
@@ -1035,6 +1039,9 @@ class Neo4jVector(VectorStore):
             filter (Optional[Dict[str, Any]]): Dictionary of argument(s) to
                     filter on metadata.
                 Defaults to None.
+            effective_search_ratio (int): Controls the candidate pool size
+               by multiplying $k to balance query accuracy and performance.
+               Defaults to 1.
 
         Returns:
             List of Documents most similar to the query and score for each
@@ -1046,6 +1053,7 @@ class Neo4jVector(VectorStore):
             query=query,
             params=params,
             filter=filter,
+            effective_search_ratio=effective_search_ratio,
             **kwargs,
         )
         return docs
@@ -1056,6 +1064,7 @@ class Neo4jVector(VectorStore):
         k: int = 4,
         filter: Optional[Dict[str, Any]] = None,
         params: Dict[str, Any] = {},
+        effective_search_ratio: int = 1,
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         """
@@ -1076,6 +1085,9 @@ class Neo4jVector(VectorStore):
                 Defaults to None.
             params (Dict[str, Any]): The search params for the index type.
                 Defaults to empty dict.
+            effective_search_ratio (int): Controls the candidate pool size
+               by multiplying $k to balance query accuracy and performance.
+               Defaults to 1.
 
         Returns:
             List[Tuple[Document, float]]: A list of tuples, each containing
@@ -1161,7 +1173,7 @@ class Neo4jVector(VectorStore):
             "embedding": embedding,
             "keyword_index": self.keyword_index_name,
             "query": remove_lucene_chars(kwargs["query"]),
-            "ef": self.effective_search_ratio,
+            "ef": effective_search_ratio,
             **params,
             **filter_params,
         }
@@ -1217,6 +1229,7 @@ class Neo4jVector(VectorStore):
         k: int = 4,
         filter: Optional[Dict[str, Any]] = None,
         params: Dict[str, Any] = {},
+        effective_search_ratio: int = 1,
         **kwargs: Any,
     ) -> List[Document]:
         """Return docs most similar to embedding vector.
@@ -1234,7 +1247,12 @@ class Neo4jVector(VectorStore):
             List of Documents most similar to the query vector.
         """
         docs_and_scores = self.similarity_search_with_score_by_vector(
-            embedding=embedding, k=k, filter=filter, params=params, **kwargs
+            embedding=embedding,
+            k=k,
+            filter=filter,
+            params=params,
+            effective_search_ratio=effective_search_ratio,
+            **kwargs,
         )
         return [doc for doc, _ in docs_and_scores]
 

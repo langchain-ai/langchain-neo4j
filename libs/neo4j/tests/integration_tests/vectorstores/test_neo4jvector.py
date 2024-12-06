@@ -1003,11 +1003,16 @@ def test_neo4jvector_effective_search_ratio() -> None:
         username=username,
         password=password,
         pre_delete_collection=True,
-        effective_search_ratio=2,
     )
-    output = docsearch.similarity_search("foo", k=2)
+    output = docsearch.similarity_search("foo", k=2, effective_search_ratio=2)
     assert len(output) == 2
 
+    output1 = docsearch.similarity_search_with_score(
+        "foo", k=2, effective_search_ratio=2
+    )
+    assert len(output1) == 2
+    # Assert ordered by score
+    assert output1[0][1] > output1[1][1]
     drop_vector_indexes(docsearch)
 
 
