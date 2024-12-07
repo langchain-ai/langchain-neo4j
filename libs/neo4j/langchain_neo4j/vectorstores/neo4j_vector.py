@@ -89,15 +89,17 @@ def _get_search_index_query(
     if index_type == IndexType.NODE:
         if search_type == SearchType.VECTOR:
             return (
-                "CALL db.index.vector.queryNodes($index, $k, $embedding) "
+                "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
                 "YIELD node, score "
+                "WITH node, score LIMIT $k "
             )
         elif search_type == SearchType.HYBRID:
             call_prefix = "CALL () { " if neo4j_version_is_5_23_or_above else "CALL { "
 
             query_body = (
-                "CALL db.index.vector.queryNodes($index, $k, $embedding) "
+                "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
                 "YIELD node, score "
+                "WITH node, score LIMIT $k "
                 "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
                 "UNWIND nodes AS n "
                 "RETURN n.node AS node, (n.score / max) AS score UNION "
@@ -117,8 +119,9 @@ def _get_search_index_query(
             raise ValueError(f"Unsupported SearchType: {search_type}")
     else:
         return (
-            "CALL db.index.vector.queryRelationships($index, $k, $embedding) "
+            "CALL db.index.vector.queryRelationships($index, $k * $ef, $embedding) "
             "YIELD relationship, score "
+            "WITH relationship, score LIMIT $k "
         )
 
 
@@ -461,6 +464,8 @@ class Neo4jVector(VectorStore):
             'NODE' or 'RELATIONSHIP'
         pre_delete_collection: If True, will delete existing data if it exists.
             (default: False). Useful for testing.
+        effective_search_ratio: Controls the candidate pool size by multiplying $k
+            to balance query accuracy and performance.
 
     Example:
         .. code-block:: python
@@ -587,6 +592,7 @@ class Neo4jVector(VectorStore):
         self.retrieval_query = retrieval_query
         self.search_type = search_type
         self._index_type = index_type
+
         # Calculate embedding dimension
         self.embedding_dimension = len(embedding.embed_query("foo"))
 
@@ -984,6 +990,7 @@ class Neo4jVector(VectorStore):
         k: int = 4,
         params: Dict[str, Any] = {},
         filter: Optional[Dict[str, Any]] = None,
+        effective_search_ratio: int = 1,
         **kwargs: Any,
     ) -> List[Document]:
         """Run similarity search with Neo4jVector.
@@ -996,7 +1003,9 @@ class Neo4jVector(VectorStore):
             filter (Optional[Dict[str, Any]]): Dictionary of argument(s) to
                     filter on metadata.
                 Defaults to None.
-
+            effective_search_ratio (int): Controls the candidate pool size
+               by multiplying $k to balance query accuracy and performance.
+               Defaults to 1.
         Returns:
             List of Documents most similar to the query.
         """
@@ -1007,6 +1016,7 @@ class Neo4jVector(VectorStore):
             query=query,
             params=params,
             filter=filter,
+            effective_search_ratio=effective_search_ratio,
             **kwargs,
         )
 
@@ -1016,6 +1026,7 @@ class Neo4jVector(VectorStore):
         k: int = 4,
         params: Dict[str, Any] = {},
         filter: Optional[Dict[str, Any]] = None,
+        effective_search_ratio: int = 1,
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         """Return docs most similar to query.
@@ -1028,6 +1039,9 @@ class Neo4jVector(VectorStore):
             filter (Optional[Dict[str, Any]]): Dictionary of argument(s) to
                     filter on metadata.
                 Defaults to None.
+            effective_search_ratio (int): Controls the candidate pool size
+               by multiplying $k to balance query accuracy and performance.
+               Defaults to 1.
 
         Returns:
             List of Documents most similar to the query and score for each
@@ -1039,6 +1053,7 @@ class Neo4jVector(VectorStore):
             query=query,
             params=params,
             filter=filter,
+            effective_search_ratio=effective_search_ratio,
             **kwargs,
         )
         return docs
@@ -1049,6 +1064,7 @@ class Neo4jVector(VectorStore):
         k: int = 4,
         filter: Optional[Dict[str, Any]] = None,
         params: Dict[str, Any] = {},
+        effective_search_ratio: int = 1,
         **kwargs: Any,
     ) -> List[Tuple[Document, float]]:
         """
@@ -1069,6 +1085,9 @@ class Neo4jVector(VectorStore):
                 Defaults to None.
             params (Dict[str, Any]): The search params for the index type.
                 Defaults to empty dict.
+            effective_search_ratio (int): Controls the candidate pool size
+               by multiplying $k to balance query accuracy and performance.
+               Defaults to 1.
 
         Returns:
             List[Tuple[Document, float]]: A list of tuples, each containing
@@ -1154,6 +1173,7 @@ class Neo4jVector(VectorStore):
             "embedding": embedding,
             "keyword_index": self.keyword_index_name,
             "query": remove_lucene_chars(kwargs["query"]),
+            "ef": effective_search_ratio,
             **params,
             **filter_params,
         }
@@ -1209,6 +1229,7 @@ class Neo4jVector(VectorStore):
         k: int = 4,
         filter: Optional[Dict[str, Any]] = None,
         params: Dict[str, Any] = {},
+        effective_search_ratio: int = 1,
         **kwargs: Any,
     ) -> List[Document]:
         """Return docs most similar to embedding vector.
@@ -1226,7 +1247,12 @@ class Neo4jVector(VectorStore):
             List of Documents most similar to the query vector.
         """
         docs_and_scores = self.similarity_search_with_score_by_vector(
-            embedding=embedding, k=k, filter=filter, params=params, **kwargs
+            embedding=embedding,
+            k=k,
+            filter=filter,
+            params=params,
+            effective_search_ratio=effective_search_ratio,
+            **kwargs,
         )
         return [doc for doc, _ in docs_and_scores]
 

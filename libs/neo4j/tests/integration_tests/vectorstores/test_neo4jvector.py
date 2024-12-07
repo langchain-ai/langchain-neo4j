@@ -701,6 +701,7 @@ def test_hybrid_score_normalization() -> None:
             "index": "vector",
             "k": 1,
             "embedding": FakeEmbeddingsWithOsDimension().embed_query("foo"),
+            "ef": 1,
             "query": "foo",
             "keyword_index": "keyword",
         },
@@ -990,6 +991,28 @@ def test_neo4j_max_marginal_relevance_search() -> None:
     }
     assert output_set == expected_set
 
+    drop_vector_indexes(docsearch)
+
+
+def test_neo4jvector_effective_search_ratio() -> None:
+    """Test effective search parameter."""
+    docsearch = Neo4jVector.from_texts(
+        texts=texts,
+        embedding=FakeEmbeddingsWithOsDimension(),
+        url=url,
+        username=username,
+        password=password,
+        pre_delete_collection=True,
+    )
+    output = docsearch.similarity_search("foo", k=2, effective_search_ratio=2)
+    assert len(output) == 2
+
+    output1 = docsearch.similarity_search_with_score(
+        "foo", k=2, effective_search_ratio=2
+    )
+    assert len(output1) == 2
+    # Assert ordered by score
+    assert output1[0][1] > output1[1][1]
     drop_vector_indexes(docsearch)
 
 
