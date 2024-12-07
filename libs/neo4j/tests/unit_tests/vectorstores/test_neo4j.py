@@ -203,8 +203,9 @@ def test_converting_to_yaml() -> None:
 def test_get_search_index_query_hybrid_node_neo4j_5_23_above() -> None:
     expected_query = (
         "CALL () { "
-        "CALL db.index.vector.queryNodes($index, $k, $embedding) "
+        "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
         "YIELD node, score "
+        "WITH node, score LIMIT $k "
         "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
         "UNWIND nodes AS n "
         "RETURN n.node AS node, (n.score / max) AS score UNION "
@@ -225,8 +226,9 @@ def test_get_search_index_query_hybrid_node_neo4j_5_23_above() -> None:
 def test_get_search_index_query_hybrid_node_neo4j_5_23_below() -> None:
     expected_query = (
         "CALL { "
-        "CALL db.index.vector.queryNodes($index, $k, $embedding) "
+        "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
         "YIELD node, score "
+        "WITH node, score LIMIT $k "
         "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
         "UNWIND nodes AS n "
         "RETURN n.node AS node, (n.score / max) AS score UNION "
