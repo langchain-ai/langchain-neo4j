@@ -257,8 +257,8 @@ class GraphCypherQAChain(Chain):
         # Prevent all three LLMs from being provided simultaneously
         if llm is not None and qa_llm is not None and cypher_llm is not None:
             raise ValueError(
-                "You can specify up to two of 'cypher_llm', 'qa_llm', and 'llm', but "
-                "not all three simultaneously."
+                "You can specify up to two of 'cypher_llm', 'qa_llm'"
+                ", and 'llm', but not all three simultaneously."
             )
 
         # Assign default LLMs if specific ones are not provided

@@ -5,14 +5,14 @@ import pytest
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph, value_sanitize
 
 
-def test_value_sanitize_with_small_list():  # type: ignore[no-untyped-def]
+def test_value_sanitize_with_small_list() -> None:
     small_list = list(range(15))  # list size > LIST_LIMIT
     input_dict = {"key1": "value1", "small_list": small_list}
     expected_output = {"key1": "value1", "small_list": small_list}
     assert value_sanitize(input_dict) == expected_output
 
 
-def test_value_sanitize_with_oversized_list():  # type: ignore[no-untyped-def]
+def test_value_sanitize_with_oversized_list() -> None:
     oversized_list = list(range(150))  # list size > LIST_LIMIT
     input_dict = {"key1": "value1", "oversized_list": oversized_list}
     expected_output = {
@@ -22,21 +22,21 @@ def test_value_sanitize_with_oversized_list():  # type: ignore[no-untyped-def]
     assert value_sanitize(input_dict) == expected_output
 
 
-def test_value_sanitize_with_nested_oversized_list():  # type: ignore[no-untyped-def]
+def test_value_sanitize_with_nested_oversized_list() -> None:
     oversized_list = list(range(150))  # list size > LIST_LIMIT
     input_dict = {"key1": "value1", "oversized_list": {"key": oversized_list}}
     expected_output = {"key1": "value1", "oversized_list": {}}
     assert value_sanitize(input_dict) == expected_output
 
 
-def test_value_sanitize_with_dict_in_list():  # type: ignore[no-untyped-def]
+def test_value_sanitize_with_dict_in_list() -> None:
     oversized_list = list(range(150))  # list size > LIST_LIMIT
     input_dict = {"key1": "value1", "oversized_list": [1, 2, {"key": oversized_list}]}
     expected_output = {"key1": "value1", "oversized_list": [1, 2, {}]}
     assert value_sanitize(input_dict) == expected_output
 
 
-def test_value_sanitize_with_dict_in_nested_list():  # type: ignore[no-untyped-def]
+def test_value_sanitize_with_dict_in_nested_list() -> None:
     input_dict = {
         "key1": "value1",
         "deeply_nested_lists": [[[[{"final_nested_key": list(range(200))}]]]],
@@ -45,9 +45,9 @@ def test_value_sanitize_with_dict_in_nested_list():  # type: ignore[no-untyped-d
     assert value_sanitize(input_dict) == expected_output
 
 
-def test_driver_state_management():  # type: ignore[no-untyped-def]
+def test_driver_state_management() -> None:
     """Comprehensive test for driver state management."""
-    with patch("neo4j.GraphDatabase.driver") as mock_driver:
+    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
         # Setup mock driver
         mock_driver_instance = MagicMock()
         mock_driver.return_value = mock_driver_instance
@@ -60,7 +60,7 @@ def test_driver_state_management():  # type: ignore[no-untyped-def]
 
         # Store original driver
         original_driver = graph._driver
-        original_driver.close = MagicMock()
+        assert isinstance(original_driver.close, MagicMock)
 
         # Test initial state
         assert hasattr(graph, "_driver")
@@ -84,9 +84,9 @@ def test_driver_state_management():  # type: ignore[no-untyped-def]
             graph.refresh_schema()
 
 
-def test_close_method_removes_driver():  # type: ignore[no-untyped-def]
+def test_close_method_removes_driver() -> None:
     """Test that close method removes the _driver attribute."""
-    with patch("neo4j.GraphDatabase.driver") as mock_driver:
+    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
         # Configure mock to return a mock driver
         mock_driver_instance = MagicMock()
         mock_driver.return_value = mock_driver_instance
@@ -103,9 +103,7 @@ def test_close_method_removes_driver():  # type: ignore[no-untyped-def]
 
         # Store a reference to the original driver
         original_driver = graph._driver
-
-        # Ensure driver's close method can be mocked
-        original_driver.close = MagicMock()
+        assert isinstance(original_driver.close, MagicMock)
 
         # Call close method
         graph.close()
@@ -120,9 +118,9 @@ def test_close_method_removes_driver():  # type: ignore[no-untyped-def]
         graph.close()  # Should not raise any exception
 
 
-def test_multiple_close_calls_safe():  # type: ignore[no-untyped-def]
+def test_multiple_close_calls_safe() -> None:
     """Test that multiple close calls do not raise errors."""
-    with patch("neo4j.GraphDatabase.driver") as mock_driver:
+    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
         # Configure mock to return a mock driver
         mock_driver_instance = MagicMock()
         mock_driver.return_value = mock_driver_instance
@@ -139,9 +137,7 @@ def test_multiple_close_calls_safe():  # type: ignore[no-untyped-def]
 
         # Store a reference to the original driver
         original_driver = graph._driver
-
-        # Mock the driver's close method
-        original_driver.close = MagicMock()
+        assert isinstance(original_driver.close, MagicMock)
 
         # First close
         graph.close()

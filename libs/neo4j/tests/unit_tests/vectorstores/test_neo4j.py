@@ -321,7 +321,7 @@ def test_get_search_index_query_invalid_search_type() -> None:
 
     with pytest.raises(ValueError) as exc_info:
         _get_search_index_query(
-            search_type=invalid_search_type,  # type: ignore
+            search_type=invalid_search_type,  # type: ignore[arg-type]
             index_type=IndexType.NODE,
         )
 
@@ -356,7 +356,7 @@ def test_check_if_not_null_with_none_value() -> None:
 
 def test_handle_field_filter_invalid_field_type() -> None:
     with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field=123, value="some_value")  # type: ignore
+        _handle_field_filter(field=123, value="some_value")  # type: ignore[arg-type]
     assert "field should be a string" in str(exc_info.value)
 
 
@@ -535,7 +535,7 @@ def test_neo4jvector_invalid_distance_strategy() -> None:
             url="bolt://localhost:7687",
             username="neo4j",
             password="password",
-            distance_strategy="INVALID_STRATEGY",  # type: ignore
+            distance_strategy="INVALID_STRATEGY",  # type: ignore[arg-type]
         )
     assert "distance_strategy must be either 'EUCLIDEAN_DISTANCE' or 'COSINE'" in str(
         exc_info.value
