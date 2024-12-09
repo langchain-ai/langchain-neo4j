@@ -11,6 +11,7 @@
 ### Fixed
 
 - Removed deprecated LLMChain from GraphCypherQAChain to resolve instantiation issues with the use_function_response parameter.
+- Removed unnecessary # type: ignore comments, improving type safety and code clarity.
 
 ## 0.1.1
 
