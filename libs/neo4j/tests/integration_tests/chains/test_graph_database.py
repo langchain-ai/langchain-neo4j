@@ -4,7 +4,7 @@ import os
 from unittest.mock import MagicMock
 
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.outputs import Generation, LLMResult
+from langchain_core.language_models.fake import FakeListLLM
 
 from langchain_neo4j.chains.graph_qa.cypher import GraphCypherQAChain
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
@@ -71,11 +71,7 @@ def test_cypher_generating_run() -> None:
         "WHERE m.title = 'Pulp Fiction' "
         "RETURN a.name"
     )
-    llm = MagicMock(spec=BaseLanguageModel)
-    llm.generate_prompt.side_effect = [
-        LLMResult(generations=[[Generation(text=query)]]),
-        LLMResult(generations=[[Generation(text="Bruce Willis")]]),
-    ]
+    llm = FakeListLLM(responses=[query, "Bruce Willis"])
     chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph,
@@ -115,10 +111,7 @@ def test_cypher_top_k() -> None:
         "WHERE m.title = 'Pulp Fiction' "
         "RETURN a.name"
     )
-    llm = MagicMock(spec=BaseLanguageModel)
-    llm.generate_prompt.side_effect = [
-        LLMResult(generations=[[Generation(text=query)]])
-    ]
+    llm = FakeListLLM(responses=[query])
     chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph,
@@ -156,11 +149,7 @@ def test_cypher_intermediate_steps() -> None:
         "WHERE m.title = 'Pulp Fiction' "
         "RETURN a.name"
     )
-    llm = MagicMock(spec=BaseLanguageModel)
-    llm.generate_prompt.side_effect = [
-        LLMResult(generations=[[Generation(text=query)]]),
-        LLMResult(generations=[[Generation(text="Bruce Willis")]]),
-    ]
+    llm = FakeListLLM(responses=[query, "Bruce Willis"])
     chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph,
@@ -205,10 +194,7 @@ def test_cypher_return_direct() -> None:
         "WHERE m.title = 'Pulp Fiction' "
         "RETURN a.name"
     )
-    llm = MagicMock(spec=BaseLanguageModel)
-    llm.generate_prompt.side_effect = [
-        LLMResult(generations=[[Generation(text=query)]])
-    ]
+    llm = FakeListLLM(responses=[query])
     chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph,

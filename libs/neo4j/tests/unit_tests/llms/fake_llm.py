@@ -59,3 +59,6 @@ class FakeLLM(LLM):
         response = queries[list(queries.keys())[self.response_index]]
         self.response_index = self.response_index + 1
         return response
+
+    def bind_tools(self, tools: Any) -> None:
+        pass

@@ -3,7 +3,13 @@ from csv import DictReader
 from typing import Any, Dict, List
 
 from langchain.memory import ConversationBufferMemory, ReadOnlySharedMemory
-from langchain_core.prompts import PromptTemplate
+from langchain_core.messages import SystemMessage
+from langchain_core.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    MessagesPlaceholder,
+    PromptTemplate,
+)
 
 from langchain_neo4j.chains.graph_qa.cypher import (
     GraphCypherQAChain,
@@ -64,8 +70,10 @@ def test_graph_cypher_qa_chain_prompt_selection_1() -> None:
         cypher_prompt=cypher_prompt,
         allow_dangerous_requests=True,
     )
-    assert chain.qa_chain.prompt == qa_prompt  # type: ignore[union-attr]
-    assert chain.cypher_generation_chain.prompt == cypher_prompt
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == qa_prompt
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == cypher_prompt
 
 
 def test_graph_cypher_qa_chain_prompt_selection_2() -> None:
@@ -77,8 +85,10 @@ def test_graph_cypher_qa_chain_prompt_selection_2() -> None:
         return_intermediate_steps=False,
         allow_dangerous_requests=True,
     )
-    assert chain.qa_chain.prompt == CYPHER_QA_PROMPT  # type: ignore[union-attr]
-    assert chain.cypher_generation_chain.prompt == CYPHER_GENERATION_PROMPT
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == CYPHER_QA_PROMPT
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == CYPHER_GENERATION_PROMPT
 
 
 def test_graph_cypher_qa_chain_prompt_selection_3() -> None:
@@ -94,8 +104,10 @@ def test_graph_cypher_qa_chain_prompt_selection_3() -> None:
         qa_llm_kwargs={"memory": readonlymemory},
         allow_dangerous_requests=True,
     )
-    assert chain.qa_chain.prompt == CYPHER_QA_PROMPT  # type: ignore[union-attr]
-    assert chain.cypher_generation_chain.prompt == CYPHER_GENERATION_PROMPT
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == CYPHER_QA_PROMPT
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == CYPHER_GENERATION_PROMPT
 
 
 def test_graph_cypher_qa_chain_prompt_selection_4() -> None:
@@ -115,8 +127,10 @@ def test_graph_cypher_qa_chain_prompt_selection_4() -> None:
         qa_llm_kwargs={"prompt": qa_prompt, "memory": readonlymemory},
         allow_dangerous_requests=True,
     )
-    assert chain.qa_chain.prompt == qa_prompt  # type: ignore[union-attr]
-    assert chain.cypher_generation_chain.prompt == cypher_prompt
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == qa_prompt
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == cypher_prompt
 
 
 def test_graph_cypher_qa_chain_prompt_selection_5() -> None:
@@ -142,6 +156,30 @@ def test_graph_cypher_qa_chain_prompt_selection_5() -> None:
         assert False
     except ValueError:
         assert True
+
+
+def test_graph_cypher_qa_chain_prompt_selection_6() -> None:
+    # Test function response prompt
+    function_response_system = "Respond as a pirate!"
+    response_prompt = ChatPromptTemplate.from_messages(
+        [
+            SystemMessage(content=function_response_system),
+            HumanMessagePromptTemplate.from_template("{question}"),
+            MessagesPlaceholder(variable_name="function_response"),
+        ]
+    )
+    chain = GraphCypherQAChain.from_llm(
+        llm=FakeLLM(),
+        graph=FakeGraphStore(),
+        verbose=True,
+        use_function_response=True,
+        function_response_system=function_response_system,
+        allow_dangerous_requests=True,
+    )
+    assert hasattr(chain.qa_chain, "first")
+    assert chain.qa_chain.first == response_prompt
+    assert hasattr(chain.cypher_generation_chain, "first")
+    assert chain.cypher_generation_chain.first == CYPHER_GENERATION_PROMPT
 
 
 def test_graph_cypher_qa_chain() -> None:

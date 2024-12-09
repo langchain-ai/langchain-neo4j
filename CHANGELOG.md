@@ -4,9 +4,13 @@
 
 ### Added
 
-- Enhanced Neo4j driver connection management with more robust error handling
-- Simplified connection state checking in Neo4jGraph
+- Enhanced Neo4j driver connection management with more robust error handling.
+- Simplified connection state checking in Neo4jGraph.
 - Introduced `effective_search_ratio` parameter in Neo4jVector to enhance query accuracy by adjusting the candidate pool size during similarity searches.
+
+### Fixed
+
+- Removed deprecated LLMChain from GraphCypherQAChain to resolve instantiation issues with the use_function_response parameter.
 
 ## 0.1.1
 
