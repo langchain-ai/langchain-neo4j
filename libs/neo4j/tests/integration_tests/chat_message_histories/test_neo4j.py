@@ -1,5 +1,7 @@
 import os
+import urllib.parse
 
+import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
 from langchain_neo4j.chat_message_histories.neo4j import Neo4jChatMessageHistory
@@ -82,3 +84,39 @@ def test_add_messages_graph_object() -> None:
     del os.environ["NEO4J_URI"]
     del os.environ["NEO4J_USERNAME"]
     del os.environ["NEO4J_PASSWORD"]
+
+
+def test_invalid_url() -> None:
+    """Test initializing with invalid credentials raises ValueError."""
+    # Parse the original URL
+    parsed_url = urllib.parse.urlparse(url)
+    # Increment the port number by 1 and wrap around if necessary
+    original_port = parsed_url.port or 7687
+    new_port = (original_port + 1) % 65535 or 1
+    # Reconstruct the netloc (hostname:port)
+    new_netloc = f"{parsed_url.hostname}:{new_port}"
+    # Rebuild the URL with the new netloc
+    new_url = parsed_url._replace(netloc=new_netloc).geturl()
+
+    with pytest.raises(ValueError) as exc_info:
+        Neo4jChatMessageHistory(
+            "test_session",
+            url=new_url,
+            username=username,
+            password=password,
+        )
+    assert "Please ensure that the url is correct" in str(exc_info.value)
+
+
+def test_invalid_credentials() -> None:
+    """Test initializing with invalid credentials raises ValueError."""
+    with pytest.raises(ValueError) as exc_info:
+        Neo4jChatMessageHistory(
+            "test_session",
+            url=url,
+            username="invalid_username",
+            password="invalid_password",
+        )
+    assert "Please ensure that the username and password are correct" in str(
+        exc_info.value
+    )
