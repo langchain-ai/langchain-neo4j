@@ -1,5 +1,5 @@
 from types import ModuleType
-from typing import Mapping, Sequence, Union
+from typing import Generator, Mapping, Sequence, Union
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +12,7 @@ from langchain_neo4j.graphs.neo4j_graph import (
 
 
 @pytest.fixture
-def mock_neo4j_driver():
+def mock_neo4j_driver() -> Generator[MagicMock, None, None]:
     with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
         mock_driver_instance = MagicMock()
         mock_driver.return_value = mock_driver_instance
@@ -158,6 +158,9 @@ def test_import_error() -> None:
         with pytest.raises(ImportError) as exc_info:
             Neo4jGraph()
         assert "Could not import neo4j python package." in str(exc_info.value)
+
+
+# _format_schema tests
 
 
 def test_format_schema_string_high_distinct_count() -> None:
@@ -513,3 +516,202 @@ def test_format_schema_values_none() -> None:
     )
     result = _format_schema(schema, is_enhanced=True)
     assert result == expected_output
+
+
+# _enhanced_schema_cypher tests
+
+
+def test_enhanced_schema_cypher_integer_exhaustive_true(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+
+    graph.structured_schema = {"metadata": {"index": []}}
+    properties = [{"property": "age", "type": "INTEGER"}]
+    query = graph._enhanced_schema_cypher("Person", properties, exhaustive=True)
+    assert "min(n.`age`) AS `age_min`" in query
+    assert "max(n.`age`) AS `age_max`" in query
+    assert "count(distinct n.`age`) AS `age_distinct`" in query
+    assert (
+        "min: toString(`age_min`), max: toString(`age_max`), "
+        "distinct_count: `age_distinct`" in query
+    )
+
+
+def test_enhanced_schema_cypher_list_exhaustive_true(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    graph.structured_schema = {"metadata": {"index": []}}
+    properties = [{"property": "tags", "type": "LIST"}]
+    query = graph._enhanced_schema_cypher("Article", properties, exhaustive=True)
+    assert "min(size(n.`tags`)) AS `tags_size_min`" in query
+    assert "max(size(n.`tags`)) AS `tags_size_max`" in query
+    assert "min_size: `tags_size_min`, max_size: `tags_size_max`" in query
+
+
+def test_enhanced_schema_cypher_boolean_exhaustive_true(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    properties = [{"property": "active", "type": "BOOLEAN"}]
+    query = graph._enhanced_schema_cypher("User", properties, exhaustive=True)
+    # BOOLEAN types should be skipped, so their properties should not be in the query
+    assert "n.`active`" not in query
+
+
+def test_enhanced_schema_cypher_integer_exhaustive_false_no_index(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    graph.structured_schema = {"metadata": {"index": []}}
+    properties = [{"property": "age", "type": "INTEGER"}]
+    query = graph._enhanced_schema_cypher("Person", properties, exhaustive=False)
+    assert "collect(distinct toString(n.`age`)) AS `age_values`" in query
+    assert "values: `age_values`" in query
+
+
+def test_enhanced_schema_cypher_integer_exhaustive_false_with_index(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    graph.structured_schema = {
+        "metadata": {
+            "index": [
+                {
+                    "label": "Person",
+                    "properties": ["age"],
+                    "type": "RANGE",
+                }
+            ]
+        }
+    }
+    properties = [{"property": "age", "type": "INTEGER"}]
+    query = graph._enhanced_schema_cypher("Person", properties, exhaustive=False)
+    assert "min(n.`age`) AS `age_min`" in query
+    assert "max(n.`age`) AS `age_max`" in query
+    assert "count(distinct n.`age`) AS `age_distinct`" in query
+    assert (
+        "min: toString(`age_min`), max: toString(`age_max`), "
+        "distinct_count: `age_distinct`" in query
+    )
+
+
+def test_enhanced_schema_cypher_list_exhaustive_false(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    properties = [{"property": "tags", "type": "LIST"}]
+    query = graph._enhanced_schema_cypher("Article", properties, exhaustive=False)
+    assert "min(size(n.`tags`)) AS `tags_size_min`" in query
+    assert "max(size(n.`tags`)) AS `tags_size_max`" in query
+    assert "min_size: `tags_size_min`, max_size: `tags_size_max`" in query
+
+
+def test_enhanced_schema_cypher_boolean_exhaustive_false(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    properties = [{"property": "active", "type": "BOOLEAN"}]
+    query = graph._enhanced_schema_cypher("User", properties, exhaustive=False)
+    # BOOLEAN types should be skipped, so their properties should not be in the query
+    assert "n.`active`" not in query
+
+
+def test_enhanced_schema_cypher_string_exhaustive_false_with_index(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    graph.structured_schema = {
+        "metadata": {
+            "index": [
+                {
+                    "label": "Person",
+                    "properties": ["status"],
+                    "type": "RANGE",
+                    "size": 5,
+                    "distinctValues": 5,
+                }
+            ]
+        }
+    }
+    graph.query = MagicMock(return_value=[{"value": ["Single", "Married", "Divorced"]}])
+    properties = [{"property": "status", "type": "STRING"}]
+    query = graph._enhanced_schema_cypher("Person", properties, exhaustive=False)
+    assert "values: ['Single', 'Married', 'Divorced'], distinct_count: 3" in query
+
+
+def test_enhanced_schema_cypher_string_exhaustive_false_no_index(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    graph.structured_schema = {"metadata": {"index": []}}
+    properties = [{"property": "status", "type": "STRING"}]
+    query = graph._enhanced_schema_cypher("Person", properties, exhaustive=False)
+    assert (
+        "collect(distinct substring(toString(n.`status`), 0, 50)) AS `status_values`"
+        in query
+    )
+    assert "values: `status_values`" in query
+
+
+def test_enhanced_schema_cypher_point_type(mock_neo4j_driver: MagicMock) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    properties = [{"property": "location", "type": "POINT"}]
+    query = graph._enhanced_schema_cypher("Place", properties, exhaustive=True)
+    # POINT types should be skipped
+    assert "n.`location`" not in query
+
+
+def test_enhanced_schema_cypher_duration_type(mock_neo4j_driver: MagicMock) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    properties = [{"property": "duration", "type": "DURATION"}]
+    query = graph._enhanced_schema_cypher("Event", properties, exhaustive=False)
+    # DURATION types should be skipped
+    assert "n.`duration`" not in query
+
+
+def test_enhanced_schema_cypher_relationship(mock_neo4j_driver: MagicMock) -> None:
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
+    properties = [{"property": "since", "type": "INTEGER"}]
+
+    query = graph._enhanced_schema_cypher(
+        label_or_type="FRIENDS_WITH",
+        properties=properties,
+        exhaustive=True,
+        is_relationship=True,
+    )
+
+    assert query.startswith("MATCH ()-[n:`FRIENDS_WITH`]->()")
+    assert "min(n.`since`) AS `since_min`" in query
+    assert "max(n.`since`) AS `since_max`" in query
+    assert "count(distinct n.`since`) AS `since_distinct`" in query
+    expected_return_clause = (
+        "`since`: {min: toString(`since_min`), max: toString(`since_max`), "
+        "distinct_count: `since_distinct`}"
+    )
+    assert expected_return_clause in query
