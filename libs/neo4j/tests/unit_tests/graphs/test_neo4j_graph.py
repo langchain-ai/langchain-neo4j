@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from langchain_neo4j.graphs.neo4j_graph import (
+    LIST_LIMIT,
     Neo4jGraph,
     _format_schema,
     value_sanitize,
@@ -32,7 +33,7 @@ def mock_neo4j_driver() -> Generator[MagicMock, None, None]:
         ),
         (
             "Oversized list",
-            {"key1": "value1", "oversized_list": list(range(150))},
+            {"key1": "value1", "oversized_list": list(range(LIST_LIMIT + 1))},
             {"key1": "value1"},
         ),
         (
@@ -42,16 +43,26 @@ def mock_neo4j_driver() -> Generator[MagicMock, None, None]:
         ),
         (
             "Dict in list",
-            {"key1": "value1", "oversized_list": [1, 2, {"key": list(range(150))}]},
+            {
+                "key1": "value1",
+                "oversized_list": [1, 2, {"key": list(range(LIST_LIMIT + 1))}],
+            },
             {"key1": "value1", "oversized_list": [1, 2, {}]},
         ),
         (
             "Dict in nested list",
             {
                 "key1": "value1",
-                "deeply_nested_lists": [[[[{"final_nested_key": list(range(200))}]]]],
+                "deeply_nested_lists": [
+                    [[[{"final_nested_key": list(range(LIST_LIMIT + 1))}]]]
+                ],
             },
             {"key1": "value1", "deeply_nested_lists": [[[[{}]]]]},
+        ),
+        (
+            "Bare oversized list",
+            list(range(LIST_LIMIT + 1)),
+            None,
         ),
         (
             "None value",
@@ -97,6 +108,19 @@ def test_driver_state_management(mock_neo4j_driver: MagicMock) -> None:
         match="Cannot perform operations - Neo4j connection has been closed",
     ):
         graph.refresh_schema()
+
+
+def test_neo4j_graph_del_method(mock_neo4j_driver: MagicMock) -> None:
+    """Test the __del__ method."""
+    with patch.object(Neo4jGraph, "close") as mock_close:
+        graph = Neo4jGraph(
+            url="bolt://localhost:7687", username="neo4j", password="password"
+        )
+        # Ensure exceptions are suppressed when the graph's destructor is called
+        mock_close.side_effect = Exception()
+        mock_close.assert_not_called()
+        graph.__del__()
+        mock_close.assert_called_once()
 
 
 def test_close_method_removes_driver(mock_neo4j_driver: MagicMock) -> None:
