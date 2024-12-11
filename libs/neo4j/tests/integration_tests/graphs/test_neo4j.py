@@ -1,5 +1,7 @@
 import os
+import urllib
 
+import pytest
 from langchain_core.documents import Document
 
 from langchain_neo4j import Neo4jGraph
@@ -130,7 +132,7 @@ def test_neo4j_timeout() -> None:
 
 
 def test_neo4j_sanitize_values() -> None:
-    """Test that neo4j uses the timeout correctly."""
+    """Test that lists with more than 128 elements are removed from the results."""
     url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
     username = os.environ.get("NEO4J_USERNAME", "neo4j")
     password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
@@ -558,3 +560,47 @@ def test_neo4j_multiple_close() -> None:
     # Test that multiple closes don't raise errors
     graph.close()
     graph.close()  # This should not raise an error
+
+
+def test_invalid_url() -> None:
+    """Test initializing with invalid credentials raises ValueError."""
+    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    username = os.environ.get("NEO4J_USERNAME", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
+    assert url is not None
+    assert username is not None
+    assert password is not None
+
+    # Parse the original URL
+    parsed_url = urllib.parse.urlparse(url)
+    # Increment the port number by 1 and wrap around if necessary
+    original_port = parsed_url.port or 7687
+    new_port = (original_port + 1) % 65535 or 1
+    # Reconstruct the netloc (hostname:port)
+    new_netloc = f"{parsed_url.hostname}:{new_port}"
+    # Rebuild the URL with the new netloc
+    new_url = parsed_url._replace(netloc=new_netloc).geturl()
+
+    with pytest.raises(ValueError) as exc_info:
+        Neo4jGraph(
+            url=new_url,
+            username=username,
+            password=password,
+        )
+    assert "Please ensure that the url is correct" in str(exc_info.value)
+
+
+def test_invalid_credentials() -> None:
+    """Test initializing with invalid credentials raises ValueError."""
+    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    assert url is not None
+
+    with pytest.raises(ValueError) as exc_info:
+        Neo4jGraph(
+            url=url,
+            username="invalid_username",
+            password="invalid_password",
+        )
+    assert "Please ensure that the username and password are correct" in str(
+        exc_info.value
+    )
