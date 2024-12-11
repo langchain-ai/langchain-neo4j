@@ -11,6 +11,17 @@ from langchain_neo4j.graphs.neo4j_graph import (
 )
 
 
+@pytest.fixture
+def mock_neo4j_driver():
+    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
+        mock_driver_instance = MagicMock()
+        mock_driver.return_value = mock_driver_instance
+        mock_driver_instance.verify_connectivity.return_value = None
+        mock_driver_instance.execute_query = MagicMock(return_value=([], None, None))
+        mock_driver_instance._closed = False
+        yield mock_driver_instance
+
+
 def test_value_sanitize_with_small_list() -> None:
     small_list = list(range(15))  # list size > LIST_LIMIT
     input_dict = {"key1": "value1", "small_list": small_list}
@@ -51,109 +62,81 @@ def test_value_sanitize_with_dict_in_nested_list() -> None:
     assert value_sanitize(input_dict) == expected_output
 
 
-def test_driver_state_management() -> None:
+def test_driver_state_management(mock_neo4j_driver: MagicMock) -> None:
     """Comprehensive test for driver state management."""
-    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
-        # Setup mock driver
-        mock_driver_instance = MagicMock()
-        mock_driver.return_value = mock_driver_instance
-        mock_driver_instance.execute_query = MagicMock(return_value=([], None, None))
+    # Create graph instance
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
 
-        # Create graph instance
-        graph = Neo4jGraph(
-            url="bolt://localhost:7687", username="neo4j", password="password"
-        )
+    # Store original driver
+    original_driver = graph._driver
+    assert isinstance(original_driver.close, MagicMock)
 
-        # Store original driver
-        original_driver = graph._driver
-        assert isinstance(original_driver.close, MagicMock)
+    # Test initial state
+    assert hasattr(graph, "_driver")
 
-        # Test initial state
-        assert hasattr(graph, "_driver")
+    # First close
+    graph.close()
+    original_driver.close.assert_called_once()
+    assert not hasattr(graph, "_driver")
 
-        # First close
-        graph.close()
-        original_driver.close.assert_called_once()
-        assert not hasattr(graph, "_driver")
+    # Verify methods raise error when driver is closed
+    with pytest.raises(
+        RuntimeError,
+        match="Cannot perform operations - Neo4j connection has been closed",
+    ):
+        graph.query("RETURN 1")
 
-        # Verify methods raise error when driver is closed
-        with pytest.raises(
-            RuntimeError,
-            match="Cannot perform operations - Neo4j connection has been closed",
-        ):
-            graph.query("RETURN 1")
-
-        with pytest.raises(
-            RuntimeError,
-            match="Cannot perform operations - Neo4j connection has been closed",
-        ):
-            graph.refresh_schema()
+    with pytest.raises(
+        RuntimeError,
+        match="Cannot perform operations - Neo4j connection has been closed",
+    ):
+        graph.refresh_schema()
 
 
-def test_close_method_removes_driver() -> None:
+def test_close_method_removes_driver(mock_neo4j_driver: MagicMock) -> None:
     """Test that close method removes the _driver attribute."""
-    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
-        # Configure mock to return a mock driver
-        mock_driver_instance = MagicMock()
-        mock_driver.return_value = mock_driver_instance
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
 
-        # Configure mock execute_query to return empty result
-        mock_driver_instance.execute_query = MagicMock(return_value=([], None, None))
+    # Store a reference to the original driver
+    original_driver = graph._driver
+    assert isinstance(original_driver.close, MagicMock)
 
-        # Add a _closed attribute to simulate driver state
-        mock_driver_instance._closed = False
+    # Call close method
+    graph.close()
 
-        graph = Neo4jGraph(
-            url="bolt://localhost:7687", username="neo4j", password="password"
-        )
+    # Verify driver.close was called
+    original_driver.close.assert_called_once()
 
-        # Store a reference to the original driver
-        original_driver = graph._driver
-        assert isinstance(original_driver.close, MagicMock)
+    # Verify _driver attribute is removed
+    assert not hasattr(graph, "_driver")
 
-        # Call close method
-        graph.close()
-
-        # Verify driver.close was called
-        original_driver.close.assert_called_once()
-
-        # Verify _driver attribute is removed
-        assert not hasattr(graph, "_driver")
-
-        # Verify second close does not raise an error
-        graph.close()  # Should not raise any exception
+    # Verify second close does not raise an error
+    graph.close()  # Should not raise any exception
 
 
-def test_multiple_close_calls_safe() -> None:
+def test_multiple_close_calls_safe(mock_neo4j_driver: MagicMock) -> None:
     """Test that multiple close calls do not raise errors."""
-    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
-        # Configure mock to return a mock driver
-        mock_driver_instance = MagicMock()
-        mock_driver.return_value = mock_driver_instance
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687", username="neo4j", password="password"
+    )
 
-        # Configure mock execute_query to return empty result
-        mock_driver_instance.execute_query = MagicMock(return_value=([], None, None))
+    # Store a reference to the original driver
+    original_driver = graph._driver
+    assert isinstance(original_driver.close, MagicMock)
 
-        # Add a _closed attribute to simulate driver state
-        mock_driver_instance._closed = False
+    # First close
+    graph.close()
+    original_driver.close.assert_called_once()
 
-        graph = Neo4jGraph(
-            url="bolt://localhost:7687", username="neo4j", password="password"
-        )
+    # Verify _driver attribute is removed
+    assert not hasattr(graph, "_driver")
 
-        # Store a reference to the original driver
-        original_driver = graph._driver
-        assert isinstance(original_driver.close, MagicMock)
-
-        # First close
-        graph.close()
-        original_driver.close.assert_called_once()
-
-        # Verify _driver attribute is removed
-        assert not hasattr(graph, "_driver")
-
-        # Second close should not raise an error
-        graph.close()  # Should not raise any exception
+    # Second close should not raise an error
+    graph.close()  # Should not raise any exception
 
 
 def test_import_error() -> None:
