@@ -163,359 +163,354 @@ def test_import_error() -> None:
 # _format_schema tests
 
 
-def test_format_schema_string_high_distinct_count() -> None:
-    schema = {
-        "node_props": {
-            "Person": [
-                {
-                    "property": "name",
-                    "type": "STRING",
-                    "values": ["Alice", "Bob", "Charlie"],
-                    "distinct_count": 11,  # Greater than DISTINCT_VALUE_LIMIT (10)
-                }
-            ]
-        },
-        "rel_props": {},
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "- **Person**\n"
-        '  - `name`: STRING Example: "Alice"\n'
-        "Relationship properties:\n"
-        "\n"
-        "The relationships:\n"
-    )
+@pytest.mark.parametrize(
+    "description, schema, expected_output",
+    [
+        (
+            "String property with high distinct count",
+            {
+                "node_props": {
+                    "Person": [
+                        {
+                            "property": "name",
+                            "type": "STRING",
+                            "values": ["Alice", "Bob", "Charlie"],
+                            "distinct_count": 11,
+                        }
+                    ]
+                },
+                "rel_props": {},
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "- **Person**\n"
+                '  - `name`: STRING Example: "Alice"\n'
+                "Relationship properties:\n"
+                "\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "String property with low distinct count",
+            {
+                "node_props": {
+                    "Animal": [
+                        {
+                            "property": "species",
+                            "type": "STRING",
+                            "values": ["Cat", "Dog"],
+                            "distinct_count": 2,
+                        }
+                    ]
+                },
+                "rel_props": {},
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "- **Animal**\n"
+                "  - `species`: STRING Available options: ['Cat', 'Dog']\n"
+                "Relationship properties:\n"
+                "\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Numeric property with min and max",
+            {
+                "node_props": {
+                    "Person": [
+                        {"property": "age", "type": "INTEGER", "min": 20, "max": 70}
+                    ]
+                },
+                "rel_props": {},
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "- **Person**\n"
+                "  - `age`: INTEGER Min: 20, Max: 70\n"
+                "Relationship properties:\n"
+                "\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Numeric property with values",
+            {
+                "node_props": {
+                    "Event": [
+                        {
+                            "property": "date",
+                            "type": "DATE",
+                            "values": ["2021-01-01", "2021-01-02"],
+                        }
+                    ]
+                },
+                "rel_props": {},
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "- **Event**\n"
+                '  - `date`: DATE Example: "2021-01-01"\n'
+                "Relationship properties:\n"
+                "\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "List property that should be skipped",
+            {
+                "node_props": {
+                    "Document": [
+                        {
+                            "property": "embedding",
+                            "type": "LIST",
+                            "min_size": 150,
+                            "max_size": 200,
+                        }
+                    ]
+                },
+                "rel_props": {},
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "- **Document**\n"
+                "Relationship properties:\n"
+                "\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "List property that should be included",
+            {
+                "node_props": {
+                    "Document": [
+                        {
+                            "property": "keywords",
+                            "type": "LIST",
+                            "min_size": 2,
+                            "max_size": 5,
+                        }
+                    ]
+                },
+                "rel_props": {},
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "- **Document**\n"
+                "  - `keywords`: LIST Min Size: 2, Max Size: 5\n"
+                "Relationship properties:\n"
+                "\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Relationship string property with high distinct count",
+            {
+                "node_props": {},
+                "rel_props": {
+                    "KNOWS": [
+                        {
+                            "property": "since",
+                            "type": "STRING",
+                            "values": ["2000", "2001", "2002"],
+                            "distinct_count": 15,
+                        }
+                    ]
+                },
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "\n"
+                "Relationship properties:\n"
+                "- **KNOWS**\n"
+                '  - `since`: STRING Example: "2000"\n'
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Relationship string property with low distinct count",
+            {
+                "node_props": {},
+                "rel_props": {
+                    "LIKES": [
+                        {
+                            "property": "intensity",
+                            "type": "STRING",
+                            "values": ["High", "Medium", "Low"],
+                            "distinct_count": 3,
+                        }
+                    ]
+                },
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "\n"
+                "Relationship properties:\n"
+                "- **LIKES**\n"
+                "  - `intensity`: STRING Available options: ['High', 'Medium', 'Low']\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Relationship numeric property with min and max",
+            {
+                "node_props": {},
+                "rel_props": {
+                    "WORKS_WITH": [
+                        {
+                            "property": "since",
+                            "type": "INTEGER",
+                            "min": 1995,
+                            "max": 2020,
+                        }
+                    ]
+                },
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "\n"
+                "Relationship properties:\n"
+                "- **WORKS_WITH**\n"
+                "  - `since`: INTEGER Min: 1995, Max: 2020\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Relationship list property that should be skipped",
+            {
+                "node_props": {},
+                "rel_props": {
+                    "KNOWS": [
+                        {
+                            "property": "embedding",
+                            "type": "LIST",
+                            "min_size": 150,
+                            "max_size": 200,
+                        }
+                    ]
+                },
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "\n"
+                "Relationship properties:\n"
+                "- **KNOWS**\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Relationship list property that should be included",
+            {
+                "node_props": {},
+                "rel_props": {
+                    "KNOWS": [
+                        {
+                            "property": "messages",
+                            "type": "LIST",
+                            "min_size": 2,
+                            "max_size": 5,
+                        }
+                    ]
+                },
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "\n"
+                "Relationship properties:\n"
+                "- **KNOWS**\n"
+                "  - `messages`: LIST Min Size: 2, Max Size: 5\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Relationship numeric property without min and max",
+            {
+                "node_props": {},
+                "rel_props": {
+                    "OWES": [
+                        {
+                            "property": "amount",
+                            "type": "FLOAT",
+                            "values": [3.14, 2.71],
+                        }
+                    ]
+                },
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "\n"
+                "Relationship properties:\n"
+                "- **OWES**\n"
+                '  - `amount`: FLOAT Example: "3.14"\n'
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Property with empty values list",
+            {
+                "node_props": {
+                    "Person": [
+                        {
+                            "property": "name",
+                            "type": "STRING",
+                            "values": [],
+                            "distinct_count": 15,
+                        }
+                    ]
+                },
+                "rel_props": {},
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "- **Person**\n"
+                "  - `name`: STRING \n"
+                "Relationship properties:\n"
+                "\n"
+                "The relationships:\n"
+            ),
+        ),
+        (
+            "Property with missing values",
+            {
+                "node_props": {
+                    "Person": [
+                        {
+                            "property": "name",
+                            "type": "STRING",
+                            "distinct_count": 15,
+                        }
+                    ]
+                },
+                "rel_props": {},
+                "relationships": [],
+            },
+            (
+                "Node properties:\n"
+                "- **Person**\n"
+                "  - `name`: STRING \n"
+                "Relationship properties:\n"
+                "\n"
+                "The relationships:\n"
+            ),
+        ),
+    ],
+)
+def test_format_schema(description, schema, expected_output):
     result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_string_low_distinct_count() -> None:
-    schema = {
-        "node_props": {
-            "Animal": [
-                {
-                    "property": "species",
-                    "type": "STRING",
-                    "values": ["Cat", "Dog"],
-                    "distinct_count": 2,  # Less than DISTINCT_VALUE_LIMIT (10)
-                }
-            ]
-        },
-        "rel_props": {},
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "- **Animal**\n"
-        "  - `species`: STRING Available options: ['Cat', 'Dog']\n"
-        "Relationship properties:\n"
-        "\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_numeric_with_min_max() -> None:
-    schema = {
-        "node_props": {
-            "Person": [{"property": "age", "type": "INTEGER", "min": 20, "max": 70}]
-        },
-        "rel_props": {},
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "- **Person**\n"
-        "  - `age`: INTEGER Min: 20, Max: 70\n"
-        "Relationship properties:\n"
-        "\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_numeric_with_values() -> None:
-    schema = {
-        "node_props": {
-            "Event": [
-                {
-                    "property": "date",
-                    "type": "DATE",
-                    "values": ["2021-01-01", "2021-01-02"],
-                }
-            ]
-        },
-        "rel_props": {},
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "- **Event**\n"
-        '  - `date`: DATE Example: "2021-01-01"\n'
-        "Relationship properties:\n"
-        "\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_list_skipped() -> None:
-    schema = {
-        "node_props": {
-            "Document": [
-                {
-                    "property": "embedding",
-                    "type": "LIST",
-                    "min_size": 150,  # Greater than LIST_LIMIT (128)
-                    "max_size": 200,
-                }
-            ]
-        },
-        "rel_props": {},
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "- **Document**\n"
-        # 'embedding' property should be skipped
-        "Relationship properties:\n"
-        "\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_list_included() -> None:
-    schema = {
-        "node_props": {
-            "Document": [
-                {"property": "keywords", "type": "LIST", "min_size": 2, "max_size": 5}
-            ]
-        },
-        "rel_props": {},
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "- **Document**\n"
-        "  - `keywords`: LIST Min Size: 2, Max Size: 5\n"
-        "Relationship properties:\n"
-        "\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_rel_string_high_distinct_count() -> None:
-    schema = {
-        "node_props": {},
-        "rel_props": {
-            "KNOWS": [
-                {
-                    "property": "since",
-                    "type": "STRING",
-                    "values": ["2000", "2001", "2002"],
-                    "distinct_count": 15,
-                }
-            ]
-        },
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "\n"
-        "Relationship properties:\n"
-        "- **KNOWS**\n"
-        '  - `since`: STRING Example: "2000"\n'
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_rel_string_low_distinct_count() -> None:
-    schema = {
-        "node_props": {},
-        "rel_props": {
-            "LIKES": [
-                {
-                    "property": "intensity",
-                    "type": "STRING",
-                    "values": ["High", "Medium", "Low"],
-                    "distinct_count": 3,
-                }
-            ]
-        },
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "\n"
-        "Relationship properties:\n"
-        "- **LIKES**\n"
-        "  - `intensity`: STRING Available options: ['High', 'Medium', 'Low']\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_rel_numeric_with_min_max() -> None:
-    schema = {
-        "node_props": {},
-        "rel_props": {
-            "WORKS_WITH": [
-                {"property": "since", "type": "INTEGER", "min": 1995, "max": 2020}
-            ]
-        },
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "\n"
-        "Relationship properties:\n"
-        "- **WORKS_WITH**\n"
-        "  - `since`: INTEGER Min: 1995, Max: 2020\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_rel_list_skipped() -> None:
-    schema = {
-        "node_props": {},
-        "rel_props": {
-            "KNOWS": [
-                {
-                    "property": "embedding",
-                    "type": "LIST",
-                    "min_size": 150,
-                    "max_size": 200,
-                }
-            ]
-        },
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "\n"
-        "Relationship properties:\n"
-        "- **KNOWS**\n"
-        # 'embedding' property should be skipped
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_rel_list_included() -> None:
-    schema = {
-        "node_props": {},
-        "rel_props": {
-            "KNOWS": [
-                {"property": "messages", "type": "LIST", "min_size": 2, "max_size": 5}
-            ]
-        },
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "\n"
-        "Relationship properties:\n"
-        "- **KNOWS**\n"
-        "  - `messages`: LIST Min Size: 2, Max Size: 5\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_rel_numeric_no_min_max() -> None:
-    schema = {
-        "node_props": {},
-        "rel_props": {
-            "OWES": [
-                {
-                    "property": "amount",
-                    "type": "FLOAT",
-                    # 'min' and 'max' are missing
-                    "values": [3.14, 2.71],
-                }
-            ]
-        },
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "\n"
-        "Relationship properties:\n"
-        "- **OWES**\n"
-        '  - `amount`: FLOAT Example: "3.14"\n'
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_values_empty() -> None:
-    schema = {
-        "node_props": {
-            "Person": [
-                {
-                    "property": "name",
-                    "type": "STRING",
-                    "values": [],
-                    "distinct_count": 15,
-                }
-            ]
-        },
-        "rel_props": {},
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "- **Person**\n"
-        "  - `name`: STRING \n"  # Example should be empty
-        "Relationship properties:\n"
-        "\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
-
-
-def test_format_schema_values_none() -> None:
-    schema = {
-        "node_props": {
-            "Person": [
-                {
-                    "property": "name",
-                    "type": "STRING",
-                    # 'values' is missing
-                    "distinct_count": 15,
-                }
-            ]
-        },
-        "rel_props": {},
-        "relationships": [],
-    }
-    expected_output = (
-        "Node properties:\n"
-        "- **Person**\n"
-        "  - `name`: STRING \n"  # Example should be empty
-        "Relationship properties:\n"
-        "\n"
-        "The relationships:\n"
-    )
-    result = _format_schema(schema, is_enhanced=True)
-    assert result == expected_output
+    assert result == expected_output, f"Failed test case: {description}"
 
 
 # _enhanced_schema_cypher tests
