@@ -163,11 +163,12 @@ def test_import_error() -> None:
             Neo4jGraph()
         assert "Could not import neo4j python package." in str(exc_info.value)
 
+
 @pytest.mark.parametrize(
-    "description, schema, expected_output",
+    "description, schema, is_enhanced, expected_output",
     [
         (
-            "String property with high distinct count",
+            "Enhanced, string property with high distinct count",
             {
                 "node_props": {
                     "Person": [
@@ -182,6 +183,7 @@ def test_import_error() -> None:
                 "rel_props": {},
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "- **Person**\n"
@@ -192,7 +194,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "String property with low distinct count",
+            "Enhanced, string property with low distinct count",
             {
                 "node_props": {
                     "Animal": [
@@ -207,6 +209,7 @@ def test_import_error() -> None:
                 "rel_props": {},
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "- **Animal**\n"
@@ -217,7 +220,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Numeric property with min and max",
+            "Enhanced, numeric property with min and max",
             {
                 "node_props": {
                     "Person": [
@@ -227,6 +230,7 @@ def test_import_error() -> None:
                 "rel_props": {},
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "- **Person**\n"
@@ -237,7 +241,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Numeric property with values",
+            "Enhanced, numeric property with values",
             {
                 "node_props": {
                     "Event": [
@@ -251,6 +255,7 @@ def test_import_error() -> None:
                 "rel_props": {},
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "- **Event**\n"
@@ -261,7 +266,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "List property that should be skipped",
+            "Enhanced, list property that should be skipped",
             {
                 "node_props": {
                     "Document": [
@@ -276,6 +281,7 @@ def test_import_error() -> None:
                 "rel_props": {},
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "- **Document**\n"
@@ -285,7 +291,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "List property that should be included",
+            "Enhanced, list property that should be included",
             {
                 "node_props": {
                     "Document": [
@@ -300,6 +306,7 @@ def test_import_error() -> None:
                 "rel_props": {},
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "- **Document**\n"
@@ -310,7 +317,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Relationship string property with high distinct count",
+            "Enhanced, relationship string property with high distinct count",
             {
                 "node_props": {},
                 "rel_props": {
@@ -325,6 +332,7 @@ def test_import_error() -> None:
                 },
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "\n"
@@ -335,7 +343,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Relationship string property with low distinct count",
+            "Enhanced, relationship string property with low distinct count",
             {
                 "node_props": {},
                 "rel_props": {
@@ -350,6 +358,7 @@ def test_import_error() -> None:
                 },
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "\n"
@@ -360,7 +369,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Relationship numeric property with min and max",
+            "Enhanced, relationship numeric property with min and max",
             {
                 "node_props": {},
                 "rel_props": {
@@ -375,6 +384,7 @@ def test_import_error() -> None:
                 },
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "\n"
@@ -385,7 +395,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Relationship list property that should be skipped",
+            "Enhanced, relationship list property that should be skipped",
             {
                 "node_props": {},
                 "rel_props": {
@@ -400,6 +410,7 @@ def test_import_error() -> None:
                 },
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "\n"
@@ -409,7 +420,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Relationship list property that should be included",
+            "Enhanced, relationship list property that should be included",
             {
                 "node_props": {},
                 "rel_props": {
@@ -424,6 +435,7 @@ def test_import_error() -> None:
                 },
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "\n"
@@ -434,7 +446,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Relationship numeric property without min and max",
+            "Enhanced, relationship numeric property without min and max",
             {
                 "node_props": {},
                 "rel_props": {
@@ -448,6 +460,7 @@ def test_import_error() -> None:
                 },
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "\n"
@@ -458,7 +471,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Property with empty values list",
+            "Enhanced, property with empty values list",
             {
                 "node_props": {
                     "Person": [
@@ -473,6 +486,7 @@ def test_import_error() -> None:
                 "rel_props": {},
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "- **Person**\n"
@@ -483,7 +497,7 @@ def test_import_error() -> None:
             ),
         ),
         (
-            "Property with missing values",
+            "Enhanced, property with missing values",
             {
                 "node_props": {
                     "Person": [
@@ -497,6 +511,7 @@ def test_import_error() -> None:
                 "rel_props": {},
                 "relationships": [],
             },
+            True,
             (
                 "Node properties:\n"
                 "- **Person**\n"
@@ -508,8 +523,8 @@ def test_import_error() -> None:
         ),
     ],
 )
-def test_format_schema(description, schema, expected_output):
-    result = _format_schema(schema, is_enhanced=True)
+def test_format_schema(description, schema, is_enhanced, expected_output):
+    result = _format_schema(schema, is_enhanced)
     assert result == expected_output, f"Failed test case: {description}"
 
 
