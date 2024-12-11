@@ -22,44 +22,48 @@ def mock_neo4j_driver() -> Generator[MagicMock, None, None]:
         yield mock_driver_instance
 
 
-def test_value_sanitize_with_small_list() -> None:
-    small_list = list(range(15))  # list size > LIST_LIMIT
-    input_dict = {"key1": "value1", "small_list": small_list}
-    expected_output = {"key1": "value1", "small_list": small_list}
-    assert value_sanitize(input_dict) == expected_output
-
-
-def test_value_sanitize_with_oversized_list() -> None:
-    oversized_list = list(range(150))  # list size > LIST_LIMIT
-    input_dict = {"key1": "value1", "oversized_list": oversized_list}
-    expected_output = {
-        "key1": "value1"
-        # oversized_list should not be included
-    }
-    assert value_sanitize(input_dict) == expected_output
-
-
-def test_value_sanitize_with_nested_oversized_list() -> None:
-    oversized_list = list(range(150))  # list size > LIST_LIMIT
-    input_dict = {"key1": "value1", "oversized_list": {"key": oversized_list}}
-    expected_output = {"key1": "value1", "oversized_list": {}}
-    assert value_sanitize(input_dict) == expected_output
-
-
-def test_value_sanitize_with_dict_in_list() -> None:
-    oversized_list = list(range(150))  # list size > LIST_LIMIT
-    input_dict = {"key1": "value1", "oversized_list": [1, 2, {"key": oversized_list}]}
-    expected_output = {"key1": "value1", "oversized_list": [1, 2, {}]}
-    assert value_sanitize(input_dict) == expected_output
-
-
-def test_value_sanitize_with_dict_in_nested_list() -> None:
-    input_dict = {
-        "key1": "value1",
-        "deeply_nested_lists": [[[[{"final_nested_key": list(range(200))}]]]],
-    }
-    expected_output = {"key1": "value1", "deeply_nested_lists": [[[[{}]]]]}
-    assert value_sanitize(input_dict) == expected_output
+@pytest.mark.parametrize(
+    "description, input_value, expected_output",
+    [
+        (
+            "Small list",
+            {"key1": "value1", "small_list": list(range(15))},
+            {"key1": "value1", "small_list": list(range(15))},
+        ),
+        (
+            "Oversized list",
+            {"key1": "value1", "oversized_list": list(range(150))},
+            {"key1": "value1"},
+        ),
+        (
+            "Nested oversized list",
+            {"key1": "value1", "oversized_list": {"key": list(range(150))}},
+            {"key1": "value1", "oversized_list": {}},
+        ),
+        (
+            "Dict in list",
+            {"key1": "value1", "oversized_list": [1, 2, {"key": list(range(150))}]},
+            {"key1": "value1", "oversized_list": [1, 2, {}]},
+        ),
+        (
+            "Dict in nested list",
+            {
+                "key1": "value1",
+                "deeply_nested_lists": [[[[{"final_nested_key": list(range(200))}]]]],
+            },
+            {"key1": "value1", "deeply_nested_lists": [[[[{}]]]]},
+        ),
+        (
+            "None value",
+            None,
+            None,
+        ),
+    ],
+)
+def test_value_sanitize(description, input_value, expected_output):
+    assert (
+        value_sanitize(input_value) == expected_output
+    ), f"Failed test case: {description}"
 
 
 def test_driver_state_management(mock_neo4j_driver: MagicMock) -> None:
@@ -158,10 +162,6 @@ def test_import_error() -> None:
         with pytest.raises(ImportError) as exc_info:
             Neo4jGraph()
         assert "Could not import neo4j python package." in str(exc_info.value)
-
-
-# _format_schema tests
-
 
 @pytest.mark.parametrize(
     "description, schema, expected_output",
