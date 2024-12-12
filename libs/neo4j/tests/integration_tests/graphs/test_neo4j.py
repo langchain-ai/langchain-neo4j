@@ -21,6 +21,7 @@ test_data = [
                 source=Node(id="foo", type="foo"),
                 target=Node(id="bar", type="bar"),
                 type="REL",
+                properties={"key": "val"},
             )
         ],
         source=Document(page_content="source document"),
@@ -349,7 +350,16 @@ def test_enhanced_schema() -> None:
                 }
             ],
         },
-        "rel_props": {},
+        "rel_props": {
+            "REL": [
+                {
+                    "distinct_count": 1,
+                    "property": "key",
+                    "type": "STRING",
+                    "values": ["val"],
+                }
+            ]
+        },
         "relationships": [{"start": "foo", "type": "REL", "end": "bar"}],
     }
     # remove metadata portion of schema
@@ -367,16 +377,37 @@ def test_enhanced_schema_exception() -> None:
     assert password is not None
 
     graph = Neo4jGraph(
-        url=url, username=username, password=password, enhanced_schema=True
+        url=url,
+        username=username,
+        password=password,
+        enhanced_schema=True,
+        refresh_schema=False,
     )
     graph.query("MATCH (n) DETACH DELETE n")
-    graph.query("CREATE (:Node {foo:'bar'})," "(:Node {foo: 1}), (:Node {foo: [1,2]})")
+    graph.query(
+        "CREATE (:Node {foo: 'bar'}), (:Node {foo: 1}), (:Node {foo: [1,2]}), "
+        "(: EmptyNode)"
+    )
+    graph.query(
+        "MATCH (a:Node {foo: 'bar'}), (b:Node {foo: 1}), "
+        "(c:Node {foo: [1,2]}), (d: EmptyNode) "
+        "CREATE (a)-[:REL {foo: 'bar'}]->(b), (b)-[:REL {foo: 1}]->(c), "
+        "(c)-[:REL {foo: [1,2]}]->(a), (d)-[:EMPTY_REL {}]->(d)"
+    )
     graph.refresh_schema()
     expected_output = {
         "node_props": {"Node": [{"property": "foo", "type": "STRING"}]},
-        "rel_props": {},
-        "relationships": [],
+        "rel_props": {"REL": [{"property": "foo", "type": "STRING"}]},
+        "relationships": [
+            {
+                "end": "Node",
+                "start": "Node",
+                "type": "REL",
+            },
+            {"end": "EmptyNode", "start": "EmptyNode", "type": "EMPTY_REL"},
+        ],
     }
+
     # remove metadata portion of schema
     del graph.structured_schema["metadata"]
     assert graph.structured_schema == expected_output

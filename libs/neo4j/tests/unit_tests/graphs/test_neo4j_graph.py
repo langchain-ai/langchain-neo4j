@@ -1,8 +1,9 @@
 from types import ModuleType
-from typing import Generator, Mapping, Sequence, Union
+from typing import Any, Dict, Generator, Mapping, Sequence, Union
 from unittest.mock import MagicMock, patch
 
 import pytest
+from neo4j.exceptions import ClientError, Neo4jError
 
 from langchain_neo4j.graphs.neo4j_graph import (
     LIST_LIMIT,
@@ -71,7 +72,10 @@ def mock_neo4j_driver() -> Generator[MagicMock, None, None]:
         ),
     ],
 )
-def test_value_sanitize(description, input_value, expected_output):
+def test_value_sanitize(
+    description: str, input_value: Dict[str, Any], expected_output: Any
+) -> None:
+    """Test the value_sanitize function."""
     assert (
         value_sanitize(input_value) == expected_output
     ), f"Failed test case: {description}"
@@ -186,6 +190,143 @@ def test_import_error() -> None:
         with pytest.raises(ImportError) as exc_info:
             Neo4jGraph()
         assert "Could not import neo4j python package." in str(exc_info.value)
+
+
+def test_neo4j_graph_init_with_empty_credentials() -> None:
+    """Test the __init__ method when no credentials have been provided."""
+    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
+        mock_driver_instance = MagicMock()
+        mock_driver.return_value = mock_driver_instance
+        mock_driver_instance.verify_connectivity.return_value = None
+        Neo4jGraph(
+            url="bolt://localhost:7687", username="", password="", refresh_schema=False
+        )
+        mock_driver.assert_called_with("bolt://localhost:7687", auth=None)
+
+
+def test_init_apoc_procedure_not_found(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    """Test an error is raised when APOC is not installed."""
+    with patch("langchain_neo4j.Neo4jGraph.refresh_schema") as mock_refresh_schema:
+        err = ClientError()
+        err.code = "Neo.ClientError.Procedure.ProcedureNotFound"
+        mock_refresh_schema.side_effect = err
+        with pytest.raises(ValueError) as exc_info:
+            Neo4jGraph(url="bolt://localhost:7687", username="", password="")
+        assert "Could not use APOC procedures." in str(exc_info.value)
+
+
+def test_init_refresh_schema_other_err(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    """Test any other ClientErrors raised when calling refresh_schema in __init__ are
+    re-raised."""
+    with patch("langchain_neo4j.Neo4jGraph.refresh_schema") as mock_refresh_schema:
+        err = ClientError()
+        err.code = "other_error"
+        mock_refresh_schema.side_effect = err
+        with pytest.raises(ClientError) as exc_info:
+            Neo4jGraph(url="bolt://localhost:7687", username="", password="")
+        assert exc_info.value == err
+
+
+def test_query_fallback_execution(mock_neo4j_driver: MagicMock) -> None:
+    """Test the fallback to allow for implicit transactions in query."""
+    err = Neo4jError()
+    err.code = "Neo.DatabaseError.Statement.ExecutionFailed"
+    err.message = "in an implicit transaction"
+    mock_neo4j_driver.execute_query.side_effect = err
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687",
+        username="neo4j",
+        password="password",
+        database="test_db",
+        sanitize=True,
+    )
+    mock_session = MagicMock()
+    mock_result = MagicMock()
+    mock_result.data.return_value = {
+        "key1": "value1",
+        "oversized_list": list(range(LIST_LIMIT + 1)),
+    }
+    mock_session.run.return_value = [mock_result]
+    mock_neo4j_driver.session.return_value.__enter__.return_value = mock_session
+    mock_neo4j_driver.session.return_value.__exit__.return_value = None
+    query = "MATCH (n) RETURN n;"
+    params = {"param1": "value1"}
+    json_data = graph.query(query, params)
+    mock_neo4j_driver.session.assert_called_with(database="test_db")
+    called_args, _ = mock_session.run.call_args
+    called_query = called_args[0]
+    assert called_query.text == query
+    assert called_query.timeout == graph.timeout
+    assert called_args[1] == params
+    assert json_data == [{"key1": "value1"}]
+
+
+def test_refresh_schema_handles_client_error(mock_neo4j_driver: MagicMock) -> None:
+    """Test refresh schema handles a client error which might arise due to a user
+    not having access to schema information"""
+
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687",
+        username="neo4j",
+        password="password",
+        database="test_db",
+    )
+    node_properties = [
+        {
+            "output": {
+                "properties": [{"property": "property_a", "type": "STRING"}],
+                "labels": "LabelA",
+            }
+        }
+    ]
+    relationships_properties = [
+        {
+            "output": {
+                "type": "REL_TYPE",
+                "properties": [{"property": "rel_prop", "type": "STRING"}],
+            }
+        }
+    ]
+    relationships = [
+        {"output": {"start": "LabelA", "type": "REL_TYPE", "end": "LabelB"}},
+        {"output": {"start": "LabelA", "type": "REL_TYPE", "end": "LabelC"}},
+    ]
+
+    # Mock the query method to raise ClientError for constraint and index queries
+    graph.query = MagicMock(  # type: ignore[method-assign]
+        side_effect=[
+            node_properties,
+            relationships_properties,
+            relationships,
+            ClientError("Mock ClientError"),
+        ]
+    )
+    graph.refresh_schema()
+
+    # Assertions
+    # Ensure constraints and indexes are empty due to the ClientError
+    assert graph.structured_schema["metadata"]["constraint"] == []
+    assert graph.structured_schema["metadata"]["index"] == []
+
+    # Ensure the query method was called as expected
+    assert graph.query.call_count == 4
+    graph.query.assert_any_call("SHOW CONSTRAINTS")
+
+
+def test_get_schema(mock_neo4j_driver) -> None:
+    """Tests the get_schema property."""
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687",
+        username="neo4j",
+        password="password",
+        refresh_schema=False
+    )
+    graph.schema = "test"
+    assert graph.get_schema == "test"
 
 
 @pytest.mark.parametrize(
@@ -547,7 +688,9 @@ def test_import_error() -> None:
         ),
     ],
 )
-def test_format_schema(description, schema, is_enhanced, expected_output):
+def test_format_schema(
+    description: str, schema: Dict, is_enhanced: bool, expected_output: str
+) -> None:
     result = _format_schema(schema, is_enhanced)
     assert result == expected_output, f"Failed test case: {description}"
 
@@ -685,7 +828,7 @@ def test_enhanced_schema_cypher_string_exhaustive_false_with_index(
             ]
         }
     }
-    graph.query = MagicMock(return_value=[{"value": ["Single", "Married", "Divorced"]}])
+    graph.query = MagicMock(return_value=[{"value": ["Single", "Married", "Divorced"]}])  # type: ignore[method-assign]
     properties = [{"property": "status", "type": "STRING"}]
     query = graph._enhanced_schema_cypher("Person", properties, exhaustive=False)
     assert "values: ['Single', 'Married', 'Divorced'], distinct_count: 3" in query

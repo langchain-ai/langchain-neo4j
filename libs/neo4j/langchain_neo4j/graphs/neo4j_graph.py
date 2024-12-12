@@ -215,7 +215,7 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
             formatted_rel_props.append(f"- **{rel_type}**")
             for prop in properties:
                 example = ""
-                if prop["type"] == "STRING":
+                if prop["type"] == "STRING" and prop.get("values"):
                     if prop.get("distinct_count", 11) > DISTINCT_VALUE_LIMIT:
                         example = (
                             f'Example: "{clean_string_values(prop["values"][0])}"'
