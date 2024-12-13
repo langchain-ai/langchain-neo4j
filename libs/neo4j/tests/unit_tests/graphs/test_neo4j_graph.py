@@ -317,13 +317,13 @@ def test_refresh_schema_handles_client_error(mock_neo4j_driver: MagicMock) -> No
     graph.query.assert_any_call("SHOW CONSTRAINTS")
 
 
-def test_get_schema(mock_neo4j_driver) -> None:
+def test_get_schema(mock_neo4j_driver: MagicMock) -> None:
     """Tests the get_schema property."""
     graph = Neo4jGraph(
         url="bolt://localhost:7687",
         username="neo4j",
         password="password",
-        refresh_schema=False
+        refresh_schema=False,
     )
     graph.schema = "test"
     assert graph.get_schema == "test"
