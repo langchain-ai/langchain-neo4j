@@ -1,7 +1,7 @@
 import pathlib
 from csv import DictReader
 from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from langchain.memory import ConversationBufferMemory, ReadOnlySharedMemory
