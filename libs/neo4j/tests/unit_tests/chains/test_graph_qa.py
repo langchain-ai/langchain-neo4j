@@ -304,6 +304,19 @@ def test_graph_cypher_qa_chain() -> None:
     assert True
 
 
+def test_cypher_generation_failure() -> None:
+    """Test the chain doesn't fail if the Cypher query fails to be generated."""
+    llm = FakeLLM(queries={"query": ""}, sequential_responses=True)
+    chain = GraphCypherQAChain.from_llm(
+        llm=llm,
+        graph=FakeGraphStore(),
+        allow_dangerous_requests=True,
+        return_direct=True,
+    )
+    response = chain.run("Test question")
+    assert response == []
+
+
 def test_no_backticks() -> None:
     """Test if there are no backticks, so the original text should be returned."""
     query = "MATCH (n) RETURN n"

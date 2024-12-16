@@ -77,6 +77,7 @@ def test_cypher_generating_run() -> None:
     chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph,
+        validate_cypher=True,
         allow_dangerous_requests=True,
     )
     output = chain.run("Who starred in Pulp Fiction?")
