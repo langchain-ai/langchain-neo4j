@@ -1,7 +1,7 @@
 import pathlib
 from csv import DictReader
 from typing import Any, Dict, List
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain.memory import ConversationBufferMemory, ReadOnlySharedMemory
@@ -225,6 +225,29 @@ def test_graph_cypher_qa_chain_prompt_selection_7() -> None:
     assert "The qa_llm_kwargs `prompt` must inherit from BasePromptTemplate" == str(
         exc_info.value
     )
+
+
+def test_validate_cypher() -> None:
+    with patch(
+        "langchain_neo4j.chains.graph_qa.cypher.CypherQueryCorrector",
+        autospec=True,
+    ) as cypher_query_corrector_mock:
+        GraphCypherQAChain.from_llm(
+            llm=FakeLLM(),
+            graph=FakeGraphStore(),
+            validate_cypher=True,
+            allow_dangerous_requests=True,
+        )
+        cypher_query_corrector_mock.assert_called_once_with([])
+
+
+def test_chain_type() -> None:
+    chain = GraphCypherQAChain.from_llm(
+        llm=FakeLLM(),
+        graph=FakeGraphStore(),
+        allow_dangerous_requests=True,
+    )
+    assert chain._chain_type == "graph_cypher_chain"
 
 
 def test_graph_cypher_qa_chain() -> None:

@@ -346,7 +346,7 @@ class GraphCypherQAChain(Chain):
         if validate_cypher:
             corrector_schema = [
                 Schema(el["start"], el["type"], el["end"])
-                for el in kwargs["graph"].structured_schema.get("relationships")
+                for el in kwargs["graph"].get_structured_schema.get("relationships", [])
             ]
             cypher_query_corrector = CypherQueryCorrector(corrector_schema)
 
