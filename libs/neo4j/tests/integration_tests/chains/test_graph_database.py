@@ -7,7 +7,7 @@ from langchain_core.language_models import BaseLanguageModel
 
 from langchain_neo4j.chains.graph_qa.cypher import GraphCypherQAChain
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
-from tests.unit_tests.llms.fake_llm import FakeLLM
+from tests.llms.fake_llm import FakeLLM
 
 
 def test_connect_neo4j() -> None:

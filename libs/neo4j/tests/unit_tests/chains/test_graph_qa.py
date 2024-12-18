@@ -34,7 +34,7 @@ from langchain_neo4j.chains.graph_qa.prompts import (
 )
 from langchain_neo4j.graphs.graph_document import GraphDocument
 from langchain_neo4j.graphs.graph_store import GraphStore
-from tests.unit_tests.llms.fake_llm import FakeLLM
+from tests.llms.fake_llm import FakeLLM
 
 
 class FakeGraphStore(GraphStore):
