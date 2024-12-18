@@ -2,6 +2,8 @@
 
 ## Next
 
+## 0.2.0
+
 ### Added
 
 - Enhanced Neo4j driver connection management with more robust error handling.
