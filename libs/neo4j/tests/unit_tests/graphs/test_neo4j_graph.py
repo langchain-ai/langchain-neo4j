@@ -1,6 +1,6 @@
 from types import ModuleType
 from typing import Any, Dict, Generator, Mapping, Sequence, Union
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from neo4j.exceptions import ClientError, ConfigurationError, Neo4jError
