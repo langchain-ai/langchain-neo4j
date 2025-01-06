@@ -231,6 +231,7 @@ def test_neo4j_graph_init_notification_filtering_err() -> None:
             auth=("username", "password"),
         )
 
+
 def test_neo4j_graph_init_driver_config_err() -> None:
     """Test the __init__ method with an incorrect driver config."""
     with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
