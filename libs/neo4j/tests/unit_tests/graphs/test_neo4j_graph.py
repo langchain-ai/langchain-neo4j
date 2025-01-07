@@ -3,7 +3,7 @@ from typing import Any, Dict, Generator, Mapping, Sequence, Union
 from unittest.mock import MagicMock, patch
 
 import pytest
-from neo4j.exceptions import ClientError, Neo4jError
+from neo4j.exceptions import ClientError, ConfigurationError, Neo4jError
 
 from langchain_neo4j.graphs.neo4j_graph import (
     LIST_LIMIT,
@@ -201,7 +201,52 @@ def test_neo4j_graph_init_with_empty_credentials() -> None:
         Neo4jGraph(
             url="bolt://localhost:7687", username="", password="", refresh_schema=False
         )
-        mock_driver.assert_called_with("bolt://localhost:7687", auth=None)
+        mock_driver.assert_called_with(
+            "bolt://localhost:7687", auth=None, notifications_min_severity="OFF"
+        )
+
+
+def test_neo4j_graph_init_notification_filtering_err() -> None:
+    """Test the __init__ method when notification filtering is disabled."""
+    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
+        mock_driver_instance = MagicMock()
+        mock_driver.return_value = mock_driver_instance
+        err = ConfigurationError("Notification filtering is not supported")
+        mock_driver_instance.verify_connectivity.side_effect = [err, None]
+        Neo4jGraph(
+            url="bolt://localhost:7687",
+            username="username",
+            password="password",
+            refresh_schema=False,
+        )
+        mock_driver.assert_any_call(
+            "bolt://localhost:7687",
+            auth=("username", "password"),
+            notifications_min_severity="OFF",
+        )
+        # The first call verify_connectivity should fail causing the driver to be
+        # recreated without the notifications_min_severity parameter
+        mock_driver.assert_any_call(
+            "bolt://localhost:7687",
+            auth=("username", "password"),
+        )
+
+
+def test_neo4j_graph_init_driver_config_err() -> None:
+    """Test the __init__ method with an incorrect driver config."""
+    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
+        mock_driver_instance = MagicMock()
+        mock_driver.return_value = mock_driver_instance
+        err = ConfigurationError()
+        mock_driver_instance.verify_connectivity.side_effect = err
+        with pytest.raises(ValueError) as exc_info:
+            Neo4jGraph(
+                url="bolt://localhost:7687",
+                username="username",
+                password="password",
+                refresh_schema=False,
+            )
+        assert "Please ensure that the driver config is correct" in str(exc_info.value)
 
 
 def test_init_apoc_procedure_not_found(

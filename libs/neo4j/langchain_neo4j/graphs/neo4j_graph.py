@@ -310,6 +310,7 @@ class Neo4jGraph(GraphStore):
     enhanced_schema (bool): A flag whether to scan the database for
             example values and use them in the graph schema. Default is False.
     driver_config (Dict): Configuration passed to Neo4j Driver.
+            Defaults to {"notifications_min_severity", "OFF"} if not set.
 
     *Security note*: Make sure that the database connection uses credentials
         that are narrowly-scoped to only include necessary permissions.
@@ -365,9 +366,10 @@ class Neo4jGraph(GraphStore):
             {"database": database}, "database", "NEO4J_DATABASE", "neo4j"
         )
 
-        self._driver = neo4j.GraphDatabase.driver(
-            url, auth=auth, **(driver_config or {})
-        )
+        if driver_config is None:
+            driver_config = {}
+        driver_config.setdefault("notifications_min_severity", "OFF")
+        self._driver = neo4j.GraphDatabase.driver(url, auth=auth, **driver_config)
         self._database = database
         self.timeout = timeout
         self.sanitize = sanitize
@@ -377,6 +379,20 @@ class Neo4jGraph(GraphStore):
         # Verify connection
         try:
             self._driver.verify_connectivity()
+        except neo4j.exceptions.ConfigurationError as e:
+            # If notification filtering is not supported
+            if "Notification filtering is not supported" in str(e):
+                # Retry without notifications_min_severity
+                driver_config.pop("notifications_min_severity", None)
+                self._driver = neo4j.GraphDatabase.driver(
+                    url, auth=auth, **driver_config
+                )
+                self._driver.verify_connectivity()
+            else:
+                raise ValueError(
+                    "Could not connect to Neo4j database. "
+                    "Please ensure that the driver config is correct"
+                )
         except neo4j.exceptions.ServiceUnavailable:
             raise ValueError(
                 "Could not connect to Neo4j database. "
