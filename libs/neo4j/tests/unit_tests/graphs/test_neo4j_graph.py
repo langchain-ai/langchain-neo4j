@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from neo4j.exceptions import ClientError, ConfigurationError, Neo4jError
 
+from langchain_neo4j.graphs.graph_document import GraphDocument, Node, Relationship
 from langchain_neo4j.graphs.neo4j_graph import (
     LIST_LIMIT,
     Neo4jGraph,
@@ -372,6 +373,32 @@ def test_get_schema(mock_neo4j_driver: MagicMock) -> None:
     )
     graph.schema = "test"
     assert graph.get_schema == "test"
+
+
+def test_add_graph_docs_inc_src_err(mock_neo4j_driver: MagicMock) -> None:
+    """Tests an error is raised when using add_graph_documents with include_source set
+    to True and a document is missing a source."""
+    graph = Neo4jGraph(
+        url="bolt://localhost:7687",
+        username="neo4j",
+        password="password",
+        refresh_schema=False,
+    )
+    node_1 = Node(id=1)
+    node_2 = Node(id=2)
+    rel = Relationship(source=node_1, target=node_2, type="REL")
+
+    graph_doc = GraphDocument(
+        nodes=[node_1, node_2],
+        relationships=[rel],
+    )
+    with pytest.raises(TypeError) as exc_info:
+        graph.add_graph_documents(graph_documents=[graph_doc], include_source=True)
+
+    assert (
+        "include_source is set to True, but at least one document has no `source`."
+        in str(exc_info.value)
+    )
 
 
 @pytest.mark.parametrize(

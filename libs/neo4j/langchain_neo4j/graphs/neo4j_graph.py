@@ -616,7 +616,7 @@ class Neo4jGraph(GraphStore):
         - graph_documents (List[GraphDocument]): A list of GraphDocument objects
         that contain the nodes and relationships to be added to the graph. Each
         GraphDocument should encapsulate the structure of part of the graph,
-        including nodes, relationships, and the source document information.
+        including nodes, relationships, and optionally the source document information.
         - include_source (bool, optional): If True, stores the source document
         and links it to nodes in the graph using the MENTIONS relationship.
         This is useful for tracing back the origin of data. Merges source
@@ -650,25 +650,33 @@ class Neo4jGraph(GraphStore):
                 )
                 self.refresh_schema()  # Refresh constraint information
 
+        # Check each graph_document has a source when include_source is true
+        if include_source:
+            for doc in graph_documents:
+                if doc.source is None:
+                    raise TypeError(
+                        "include_source is set to True, "
+                        "but at least one document has no `source`."
+                    )
+
         node_import_query = _get_node_import_query(baseEntityLabel, include_source)
         rel_import_query = _get_rel_import_query(baseEntityLabel)
         for document in graph_documents:
-            if not document.source.metadata.get("id"):
-                document.source.metadata["id"] = md5(
-                    document.source.page_content.encode("utf-8")
-                ).hexdigest()
+            node_import_query_params: dict[str, Any] = {
+                "data": [el.__dict__ for el in document.nodes]
+            }
+            if include_source and document.source:
+                if not document.source.metadata.get("id"):
+                    document.source.metadata["id"] = md5(
+                        document.source.page_content.encode("utf-8")
+                    ).hexdigest()
+                node_import_query_params["document"] = document.source.__dict__
 
             # Remove backticks from node types
             for node in document.nodes:
                 node.type = _remove_backticks(node.type)
             # Import nodes
-            self.query(
-                node_import_query,
-                {
-                    "data": [el.__dict__ for el in document.nodes],
-                    "document": document.source.__dict__,
-                },
-            )
+            self.query(node_import_query, node_import_query_params)
             # Import relationships
             self.query(
                 rel_import_query,
