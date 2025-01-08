@@ -191,7 +191,7 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
                     "DATE_TIME",
                     "LOCAL_DATE_TIME",
                 ]:
-                    if prop.get("min") is not None:
+                    if prop.get("min") and prop.get("max"):
                         example = f'Min: {prop["min"]}, Max: {prop["max"]}'
                     else:
                         example = (
@@ -215,7 +215,7 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
             formatted_rel_props.append(f"- **{rel_type}**")
             for prop in properties:
                 example = ""
-                if prop["type"] == "STRING":
+                if prop["type"] == "STRING" and prop.get("values"):
                     if prop.get("distinct_count", 11) > DISTINCT_VALUE_LIMIT:
                         example = (
                             f'Example: "{clean_string_values(prop["values"][0])}"'
@@ -238,8 +238,8 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
                     "DATE_TIME",
                     "LOCAL_DATE_TIME",
                 ]:
-                    if prop.get("min"):  # If we have min/max
-                        example = f'Min: {prop["min"]}, Max:  {prop["max"]}'
+                    if prop.get("min") and prop.get("max"):  # If we have min/max
+                        example = f'Min: {prop["min"]}, Max: {prop["max"]}'
                     else:  # return a single value
                         example = (
                             f'Example: "{prop["values"][0]}"' if prop["values"] else ""
@@ -252,7 +252,7 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
                         f'Min Size: {prop["min_size"]}, Max Size: {prop["max_size"]}'
                     )
                 formatted_rel_props.append(
-                    f"  - `{prop['property']}: {prop['type']}` {example}"
+                    f"  - `{prop['property']}`: {prop['type']} {example}"
                 )
     else:
         # Format node properties
@@ -310,6 +310,7 @@ class Neo4jGraph(GraphStore):
     enhanced_schema (bool): A flag whether to scan the database for
             example values and use them in the graph schema. Default is False.
     driver_config (Dict): Configuration passed to Neo4j Driver.
+            Defaults to {"notifications_min_severity", "OFF"} if not set.
 
     *Security note*: Make sure that the database connection uses credentials
         that are narrowly-scoped to only include necessary permissions.
@@ -365,9 +366,10 @@ class Neo4jGraph(GraphStore):
             {"database": database}, "database", "NEO4J_DATABASE", "neo4j"
         )
 
-        self._driver = neo4j.GraphDatabase.driver(
-            url, auth=auth, **(driver_config or {})
-        )
+        if driver_config is None:
+            driver_config = {}
+        driver_config.setdefault("notifications_min_severity", "OFF")
+        self._driver = neo4j.GraphDatabase.driver(url, auth=auth, **driver_config)
         self._database = database
         self.timeout = timeout
         self.sanitize = sanitize
@@ -377,6 +379,20 @@ class Neo4jGraph(GraphStore):
         # Verify connection
         try:
             self._driver.verify_connectivity()
+        except neo4j.exceptions.ConfigurationError as e:
+            # If notification filtering is not supported
+            if "Notification filtering is not supported" in str(e):
+                # Retry without notifications_min_severity
+                driver_config.pop("notifications_min_severity", None)
+                self._driver = neo4j.GraphDatabase.driver(
+                    url, auth=auth, **driver_config
+                )
+                self._driver.verify_connectivity()
+            else:
+                raise ValueError(
+                    "Could not connect to Neo4j database. "
+                    "Please ensure that the driver config is correct"
+                )
         except neo4j.exceptions.ServiceUnavailable:
             raise ValueError(
                 "Could not connect to Neo4j database. "
@@ -600,7 +616,7 @@ class Neo4jGraph(GraphStore):
         - graph_documents (List[GraphDocument]): A list of GraphDocument objects
         that contain the nodes and relationships to be added to the graph. Each
         GraphDocument should encapsulate the structure of part of the graph,
-        including nodes, relationships, and the source document information.
+        including nodes, relationships, and optionally the source document information.
         - include_source (bool, optional): If True, stores the source document
         and links it to nodes in the graph using the MENTIONS relationship.
         This is useful for tracing back the origin of data. Merges source
@@ -634,25 +650,33 @@ class Neo4jGraph(GraphStore):
                 )
                 self.refresh_schema()  # Refresh constraint information
 
+        # Check each graph_document has a source when include_source is true
+        if include_source:
+            for doc in graph_documents:
+                if doc.source is None:
+                    raise TypeError(
+                        "include_source is set to True, "
+                        "but at least one document has no `source`."
+                    )
+
         node_import_query = _get_node_import_query(baseEntityLabel, include_source)
         rel_import_query = _get_rel_import_query(baseEntityLabel)
         for document in graph_documents:
-            if not document.source.metadata.get("id"):
-                document.source.metadata["id"] = md5(
-                    document.source.page_content.encode("utf-8")
-                ).hexdigest()
+            node_import_query_params: dict[str, Any] = {
+                "data": [el.__dict__ for el in document.nodes]
+            }
+            if include_source and document.source:
+                if not document.source.metadata.get("id"):
+                    document.source.metadata["id"] = md5(
+                        document.source.page_content.encode("utf-8")
+                    ).hexdigest()
+                node_import_query_params["document"] = document.source.__dict__
 
             # Remove backticks from node types
             for node in document.nodes:
                 node.type = _remove_backticks(node.type)
             # Import nodes
-            self.query(
-                node_import_query,
-                {
-                    "data": [el.__dict__ for el in document.nodes],
-                    "document": document.source.__dict__,
-                },
-            )
+            self.query(node_import_query, node_import_query_params)
             # Import relationships
             self.query(
                 rel_import_query,

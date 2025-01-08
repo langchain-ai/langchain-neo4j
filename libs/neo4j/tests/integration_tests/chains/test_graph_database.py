@@ -4,10 +4,10 @@ import os
 from unittest.mock import MagicMock
 
 from langchain_core.language_models import BaseLanguageModel
-from langchain_core.language_models.fake import FakeListLLM
 
 from langchain_neo4j.chains.graph_qa.cypher import GraphCypherQAChain
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
+from tests.llms.fake_llm import FakeLLM
 
 
 def test_connect_neo4j() -> None:
@@ -71,10 +71,13 @@ def test_cypher_generating_run() -> None:
         "WHERE m.title = 'Pulp Fiction' "
         "RETURN a.name"
     )
-    llm = FakeListLLM(responses=[query, "Bruce Willis"])
+    llm = FakeLLM(
+        queries={"query": query, "response": "Bruce Willis"}, sequential_responses=True
+    )
     chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph,
+        validate_cypher=True,
         allow_dangerous_requests=True,
     )
     output = chain.run("Who starred in Pulp Fiction?")
@@ -111,7 +114,7 @@ def test_cypher_top_k() -> None:
         "WHERE m.title = 'Pulp Fiction' "
         "RETURN a.name"
     )
-    llm = FakeListLLM(responses=[query])
+    llm = FakeLLM(queries={"query": query}, sequential_responses=True)
     chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph,
@@ -149,7 +152,9 @@ def test_cypher_intermediate_steps() -> None:
         "WHERE m.title = 'Pulp Fiction' "
         "RETURN a.name"
     )
-    llm = FakeListLLM(responses=[query, "Bruce Willis"])
+    llm = FakeLLM(
+        queries={"query": query, "response": "Bruce Willis"}, sequential_responses=True
+    )
     chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph,
@@ -194,7 +199,7 @@ def test_cypher_return_direct() -> None:
         "WHERE m.title = 'Pulp Fiction' "
         "RETURN a.name"
     )
-    llm = FakeListLLM(responses=[query])
+    llm = FakeLLM(queries={"query": query}, sequential_responses=True)
     chain = GraphCypherQAChain.from_llm(
         llm=llm,
         graph=graph,
@@ -203,6 +208,46 @@ def test_cypher_return_direct() -> None:
     )
     output = chain.run("Who starred in Pulp Fiction?")
     expected_output = [{"a.name": "Bruce Willis"}]
+    assert output == expected_output
+
+
+def test_function_response() -> None:
+    """Test returning a function response."""
+    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+    username = os.environ.get("NEO4J_USERNAME", "neo4j")
+    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
+
+    graph = Neo4jGraph(
+        url=url,
+        username=username,
+        password=password,
+    )
+    # Delete all nodes in the graph
+    graph.query("MATCH (n) DETACH DELETE n")
+    # Create two nodes and a relationship
+    graph.query(
+        "CREATE (a:Actor {name:'Bruce Willis'})"
+        "-[:ACTED_IN]->(:Movie {title: 'Pulp Fiction'})"
+    )
+    # Refresh schema information
+    graph.refresh_schema()
+
+    query = (
+        "MATCH (a:Actor)-[:ACTED_IN]->(m:Movie) "
+        "WHERE m.title = 'Pulp Fiction' "
+        "RETURN a.name"
+    )
+    llm = FakeLLM(
+        queries={"query": query, "response": "Bruce Willis"}, sequential_responses=True
+    )
+    chain = GraphCypherQAChain.from_llm(
+        llm=llm,
+        graph=graph,
+        allow_dangerous_requests=True,
+        use_function_response=True,
+    )
+    output = chain.run("Who starred in Pulp Fiction?")
+    expected_output = "Bruce Willis"
     assert output == expected_output
 
 

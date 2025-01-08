@@ -2,6 +2,16 @@
 
 ## Next
 
+### Changed
+
+- Made the `source` parameter of `GraphDocument` optional and updated related methods to support this.
+
+### Fixed
+
+- Disabled warnings from the Neo4j driver for the Neo4jGraph class.
+
+## 0.2.0
+
 ### Added
 
 - Enhanced Neo4j driver connection management with more robust error handling.

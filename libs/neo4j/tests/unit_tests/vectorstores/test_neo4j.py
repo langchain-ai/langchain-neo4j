@@ -1022,3 +1022,24 @@ def test_select_relevance_score_fn_unsupported_strategy(
         f"Expected error message to contain '{expected_message}' "
         f"but got '{str(exc_info.value)}'"
     )
+
+
+def test_embedding_dimension_inconsistent_raises_value_error(
+    neo4j_vector_factory: Any,
+) -> None:
+    mock_embedding = MagicMock()
+    mock_embedding.embed_query.return_value = [0.1] * 64
+
+    with patch.object(
+        Neo4jVector, "retrieve_existing_index", return_value=(128, "NODE")
+    ):
+        with pytest.raises(ValueError) as exc_info:
+            neo4j_vector_factory(
+                method="from_existing_index",
+                embedding=mock_embedding,
+                index_name="test_index",
+            )
+    assert (
+        "The provided embedding function and vector index dimensions do not match."
+        in str(exc_info.value)
+    )

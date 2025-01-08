@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Union
+from typing import List, Optional, Union
 
 from langchain_core.documents import Document
 from langchain_core.load.serializable import Serializable
@@ -43,9 +43,10 @@ class GraphDocument(Serializable):
     Attributes:
         nodes (List[Node]): A list of nodes in the graph.
         relationships (List[Relationship]): A list of relationships in the graph.
-        source (Document): The document from which the graph information is derived.
+        source (Optional[Document]): The document from which the graph information is
+            derived.
     """
 
     nodes: List[Node]
     relationships: List[Relationship]
-    source: Document
+    source: Optional[Document] = None
