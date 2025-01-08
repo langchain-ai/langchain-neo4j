@@ -466,6 +466,8 @@ class Neo4jVector(VectorStore):
             (default: False). Useful for testing.
         effective_search_ratio: Controls the candidate pool size by multiplying $k
             to balance query accuracy and performance.
+        embedding_dimension: The dimension of the embeddings. If not provided,
+            will query the embedding model to calculate the dimension.
 
     Example:
         .. code-block:: python
@@ -509,6 +511,7 @@ class Neo4jVector(VectorStore):
         relevance_score_fn: Optional[Callable[[float], float]] = None,
         index_type: IndexType = DEFAULT_INDEX_TYPE,
         graph: Optional[Neo4jGraph] = None,
+        embedding_dimension: Optional[int] = None,
     ) -> None:
         try:
             import neo4j
@@ -593,8 +596,11 @@ class Neo4jVector(VectorStore):
         self.search_type = search_type
         self._index_type = index_type
 
-        # Calculate embedding dimension
-        self.embedding_dimension = len(embedding.embed_query("foo"))
+        if embedding_dimension:
+            self.embedding_dimension = embedding_dimension
+        else:
+            # Calculate embedding dimension
+            self.embedding_dimension = len(embedding.embed_query("foo"))
 
         # Delete existing data if flagged
         if pre_delete_collection:
@@ -1336,6 +1342,7 @@ class Neo4jVector(VectorStore):
         index_name: str,
         search_type: SearchType = DEFAULT_SEARCH_TYPE,
         keyword_index_name: Optional[str] = None,
+        embedding_dimension: Optional[int] = None,
         **kwargs: Any,
     ) -> Neo4jVector:
         """
@@ -1358,10 +1365,24 @@ class Neo4jVector(VectorStore):
             index_name=index_name,
             keyword_index_name=keyword_index_name,
             search_type=search_type,
+            embedding_dimension=embedding_dimension,
             **kwargs,
         )
 
-        embedding_dimension, index_type = store.retrieve_existing_index()
+        if embedding_dimension:
+            (
+                embedding_dimension_from_existing,
+                index_type,
+            ) = store.retrieve_existing_index()
+            if embedding_dimension_from_existing != embedding_dimension:
+                raise ValueError(
+                    "The provided embedding function and vector index "
+                    "dimensions do not match.\n"
+                    f"Embedding function dimension: {embedding_dimension}\n"
+                    f"Vector index dimension: {embedding_dimension_from_existing}"
+                )
+        else:
+            embedding_dimension, index_type = store.retrieve_existing_index()
 
         # Raise error if relationship index type
         if index_type == "RELATIONSHIP":
@@ -1408,6 +1429,7 @@ class Neo4jVector(VectorStore):
         embedding: Embeddings,
         index_name: str,
         search_type: SearchType = DEFAULT_SEARCH_TYPE,
+        embedding_dimension: Optional[int] = None,
         **kwargs: Any,
     ) -> Neo4jVector:
         """
@@ -1428,10 +1450,24 @@ class Neo4jVector(VectorStore):
         store = cls(
             embedding=embedding,
             index_name=index_name,
+            embedding_dimension=embedding_dimension,
             **kwargs,
         )
 
-        embedding_dimension, index_type = store.retrieve_existing_index()
+        if embedding_dimension:
+            (
+                embedding_dimension_from_existing,
+                index_type,
+            ) = store.retrieve_existing_index()
+            if embedding_dimension_from_existing != embedding_dimension:
+                raise ValueError(
+                    "The provided embedding function and vector index "
+                    "dimensions do not match.\n"
+                    f"Embedding function dimension: {embedding_dimension}\n"
+                    f"Vector index dimension: {embedding_dimension_from_existing}"
+                )
+        else:
+            embedding_dimension, index_type = store.retrieve_existing_index()
 
         if not index_type:
             raise ValueError(
