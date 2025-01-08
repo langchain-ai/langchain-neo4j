@@ -57,8 +57,20 @@ def extract_cypher(text: str) -> str:
 
     # Find all matches in the input text
     matches = re.findall(pattern, text, re.DOTALL)
+    if matches:
+        cypher_query = matches[0]
+    else:
+        return text
 
-    return matches[0] if matches else text
+    # Remove backticks
+    cypher_query = cypher_query.replace("`", "")
+
+    # Quote node labels if they contain spaces
+    cypher_query = re.sub(
+        r":\s*(\s*)([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)+)(\s*)", r":'\2'", cypher_query
+    )
+
+    return cypher_query
 
 
 def construct_schema(
