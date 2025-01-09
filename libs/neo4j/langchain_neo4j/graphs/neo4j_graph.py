@@ -439,7 +439,7 @@ class Neo4jGraph(GraphStore):
             query (str): The Cypher query to execute.
             params (dict): The parameters to pass to the query.
             session_params (dict): Parameters to pass to the session used for executing
-                the query. Does nothing when use_execute_query is True.
+                the query.
 
         Returns:
             List[Dict[str, Any]]: The list of dictionaries containing the query results.
