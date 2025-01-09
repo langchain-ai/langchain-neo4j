@@ -310,7 +310,6 @@ class Neo4jGraph(GraphStore):
     enhanced_schema (bool): A flag whether to scan the database for
             example values and use them in the graph schema. Default is False.
     driver_config (Dict): Configuration passed to Neo4j Driver.
-            Defaults to {"notifications_min_severity", "OFF"} if not set.
 
     *Security note*: Make sure that the database connection uses credentials
         that are narrowly-scoped to only include necessary permissions.
@@ -366,10 +365,9 @@ class Neo4jGraph(GraphStore):
             {"database": database}, "database", "NEO4J_DATABASE", "neo4j"
         )
 
-        if driver_config is None:
-            driver_config = {}
-        driver_config.setdefault("notifications_min_severity", "OFF")
-        self._driver = neo4j.GraphDatabase.driver(url, auth=auth, **driver_config)
+        self._driver = neo4j.GraphDatabase.driver(
+            url, auth=auth, **(driver_config or {})
+        )
         self._database = database
         self.timeout = timeout
         self.sanitize = sanitize
@@ -379,20 +377,11 @@ class Neo4jGraph(GraphStore):
         # Verify connection
         try:
             self._driver.verify_connectivity()
-        except neo4j.exceptions.ConfigurationError as e:
-            # If notification filtering is not supported
-            if "Notification filtering is not supported" in str(e):
-                # Retry without notifications_min_severity
-                driver_config.pop("notifications_min_severity", None)
-                self._driver = neo4j.GraphDatabase.driver(
-                    url, auth=auth, **driver_config
-                )
-                self._driver.verify_connectivity()
-            else:
-                raise ValueError(
-                    "Could not connect to Neo4j database. "
-                    "Please ensure that the driver config is correct"
-                )
+        except neo4j.exceptions.ConfigurationError:
+            raise ValueError(
+                "Could not connect to Neo4j database. "
+                "Please ensure that the driver config is correct"
+            )
         except neo4j.exceptions.ServiceUnavailable:
             raise ValueError(
                 "Could not connect to Neo4j database. "
@@ -442,12 +431,15 @@ class Neo4jGraph(GraphStore):
         self,
         query: str,
         params: dict = {},
+        session_params: dict = {},
     ) -> List[Dict[str, Any]]:
         """Query Neo4j database.
 
         Args:
             query (str): The Cypher query to execute.
             params (dict): The parameters to pass to the query.
+            session_params (dict): Parameters to pass to the session used for executing
+                the query. Does nothing when use_execute_query is True.
 
         Returns:
             List[Dict[str, Any]]: The list of dictionaries containing the query results.
@@ -459,39 +451,42 @@ class Neo4jGraph(GraphStore):
         from neo4j import Query
         from neo4j.exceptions import Neo4jError
 
-        try:
-            data, _, _ = self._driver.execute_query(
-                Query(text=query, timeout=self.timeout),
-                database_=self._database,
-                parameters_=params,
-            )
-            json_data = [r.data() for r in data]
-            if self.sanitize:
-                json_data = [value_sanitize(el) for el in json_data]
-            return json_data
-        except Neo4jError as e:
-            if not (
-                (
-                    (  # isCallInTransactionError
-                        e.code == "Neo.DatabaseError.Statement.ExecutionFailed"
-                        or e.code
-                        == "Neo.DatabaseError.Transaction.TransactionStartFailed"
-                    )
-                    and e.message is not None
-                    and "in an implicit transaction" in e.message
+        if not session_params:
+            try:
+                data, _, _ = self._driver.execute_query(
+                    Query(text=query, timeout=self.timeout),
+                    database_=self._database,
+                    parameters_=params,
                 )
-                or (  # isPeriodicCommitError
-                    e.code == "Neo.ClientError.Statement.SemanticError"
-                    and e.message is not None
-                    and (
-                        "in an open transaction is not possible" in e.message
-                        or "tried to execute in an explicit transaction" in e.message
+                json_data = [r.data() for r in data]
+                if self.sanitize:
+                    json_data = [value_sanitize(el) for el in json_data]
+                return json_data
+            except Neo4jError as e:
+                if not (
+                    (
+                        (  # isCallInTransactionError
+                            e.code == "Neo.DatabaseError.Statement.ExecutionFailed"
+                            or e.code
+                            == "Neo.DatabaseError.Transaction.TransactionStartFailed"
+                        )
+                        and e.message is not None
+                        and "in an implicit transaction" in e.message
                     )
-                )
-            ):
-                raise
+                    or (  # isPeriodicCommitError
+                        e.code == "Neo.ClientError.Statement.SemanticError"
+                        and e.message is not None
+                        and (
+                            "in an open transaction is not possible" in e.message
+                            or "tried to execute in an explicit transaction"
+                            in e.message
+                        )
+                    )
+                ):
+                    raise
         # fallback to allow implicit transactions
-        with self._driver.session(database=self._database) as session:
+        session_params.setdefault("database", self._database)
+        with self._driver.session(**session_params) as session:
             result = session.run(Query(text=query, timeout=self.timeout), params)
             json_data = [r.data() for r in result]
             if self.sanitize:
@@ -551,7 +546,7 @@ class Neo4jGraph(GraphStore):
         }
         if self._enhanced_schema:
             schema_counts = self.query(
-                "CALL apoc.meta.graphSample() YIELD nodes, relationships "
+                "CALL apoc.meta.graph() YIELD nodes, relationships "
                 "RETURN nodes, [rel in relationships | {name:apoc.any.property"
                 "(rel, 'type'), count: apoc.any.property(rel, 'count')}]"
                 " AS relationships"
@@ -569,7 +564,16 @@ class Neo4jGraph(GraphStore):
                 )
                 # Due to schema-flexible nature of neo4j errors can happen
                 try:
-                    enhanced_info = self.query(enhanced_cypher)[0]["output"]
+                    enhanced_info = self.query(
+                        enhanced_cypher,
+                        # Disable the
+                        # Neo.ClientNotification.Statement.AggregationSkippedNull
+                        # notifications raised by the use of collect in the enhanced
+                        # schema
+                        session_params={
+                            "notifications_disabled_categories": ["UNRECOGNIZED"]
+                        },
+                    )[0]["output"]
                     for prop in node_props:
                         if prop["property"] in enhanced_info:
                             prop.update(enhanced_info[prop["property"]])
