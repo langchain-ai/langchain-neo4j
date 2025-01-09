@@ -2,13 +2,18 @@
 
 ## Next
 
+### Added
+
+- Optional parameter to specify embedding dimension in `Neo4jVector`, avoiding the need to query the embedding model.
+
 ### Changed
 
 - Made the `source` parameter of `GraphDocument` optional and updated related methods to support this.
 
 ### Fixed
 
-- Disabled warnings from the Neo4j driver for the Neo4jGraph class.
+- Disabled warnings from the Neo4j driver for the Neo4jGraph class when enhanced_schema is set to True.
+- Resolved syntax errors in GraphCypherQAChain by ensuring node labels with spaces are correctly quoted in Cypher queries.
 
 ## 0.2.0
 
