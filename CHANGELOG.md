@@ -9,10 +9,10 @@
 ### Changed
 
 - Made the `source` parameter of `GraphDocument` optional and updated related methods to support this.
+- Suppressed AggregationSkippedNull warnings raised by the Neo4j driver in the Neo4jGraph class when fetching the enhanced_schema.
 
 ### Fixed
 
-- Suppressed AggregationSkippedNull warnings raised by the Neo4j driver in the Neo4jGraph class when fetching the enhanced_schema.
 - Resolved syntax errors in GraphCypherQAChain by ensuring node labels with spaces are correctly quoted in Cypher queries.
 
 ## 0.2.0
