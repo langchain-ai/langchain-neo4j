@@ -12,7 +12,7 @@
 
 ### Fixed
 
-- Disabled warnings from the Neo4j driver for the Neo4jGraph class when enhanced_schema is set to True.
+- Suppressed AggregationSkippedNull warnings raised by the Neo4j driver in the Neo4jGraph class when fetching the enhanced_schema.
 - Resolved syntax errors in GraphCypherQAChain by ensuring node labels with spaces are correctly quoted in Cypher queries.
 
 ## 0.2.0
