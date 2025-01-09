@@ -569,7 +569,7 @@ class Neo4jGraph(GraphStore):
                         # Disable the
                         # Neo.ClientNotification.Statement.AggregationSkippedNull
                         # notifications raised by the use of collect in the enhanced
-                        # schema
+                        # schema query
                         session_params={
                             "notifications_disabled_categories": ["UNRECOGNIZED"]
                         },
