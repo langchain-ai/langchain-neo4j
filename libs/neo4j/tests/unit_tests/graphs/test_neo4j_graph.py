@@ -202,35 +202,7 @@ def test_neo4j_graph_init_with_empty_credentials() -> None:
         Neo4jGraph(
             url="bolt://localhost:7687", username="", password="", refresh_schema=False
         )
-        mock_driver.assert_called_with(
-            "bolt://localhost:7687", auth=None, notifications_min_severity="OFF"
-        )
-
-
-def test_neo4j_graph_init_notification_filtering_err() -> None:
-    """Test the __init__ method when notification filtering is disabled."""
-    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
-        mock_driver_instance = MagicMock()
-        mock_driver.return_value = mock_driver_instance
-        err = ConfigurationError("Notification filtering is not supported")
-        mock_driver_instance.verify_connectivity.side_effect = [err, None]
-        Neo4jGraph(
-            url="bolt://localhost:7687",
-            username="username",
-            password="password",
-            refresh_schema=False,
-        )
-        mock_driver.assert_any_call(
-            "bolt://localhost:7687",
-            auth=("username", "password"),
-            notifications_min_severity="OFF",
-        )
-        # The first call verify_connectivity should fail causing the driver to be
-        # recreated without the notifications_min_severity parameter
-        mock_driver.assert_any_call(
-            "bolt://localhost:7687",
-            auth=("username", "password"),
-        )
+        mock_driver.assert_called_with("bolt://localhost:7687", auth=None)
 
 
 def test_neo4j_graph_init_driver_config_err() -> None:
