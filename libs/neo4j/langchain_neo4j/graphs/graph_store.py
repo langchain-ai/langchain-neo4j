@@ -23,7 +23,7 @@ class GraphStore(Protocol):
 
     def refresh_schema(self) -> None:
         """Refresh the graph schema information."""
-        pass
+        ...
 
     def add_graph_documents(
         self, graph_documents: List[GraphDocument], include_source: bool = False
