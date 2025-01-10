@@ -16,6 +16,7 @@
 ### Fixed
 
 - Resolved syntax errors in GraphCypherQAChain by ensuring node labels with spaces are correctly quoted in Cypher queries.
+- Added missing Lucene special character '/' to the list of characters escaped in `remove_lucene_chars`.
 
 ## 0.2.0
 
