@@ -179,6 +179,10 @@ def test_escaping_lucene() -> None:
         remove_lucene_chars("It is the end of the world. Take shelter~")
         == "It is the end of the world. Take shelter"
     )
+    assert (
+        remove_lucene_chars("It is the end of the world. Take shelter/")
+        == "It is the end of the world. Take shelter"
+    )
 
 
 def test_converting_to_yaml() -> None:

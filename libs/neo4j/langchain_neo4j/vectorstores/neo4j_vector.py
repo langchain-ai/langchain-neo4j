@@ -160,6 +160,7 @@ def remove_lucene_chars(text: str) -> str:
         "?",
         ":",
         "\\",
+        "/",
     ]
     for char in special_chars:
         if char in text:
