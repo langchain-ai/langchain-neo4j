@@ -37,7 +37,7 @@ from langchain_neo4j.graphs.graph_store import GraphStore
 from tests.llms.fake_llm import FakeLLM
 
 
-class FakeGraphStore(GraphStore):
+class FakeGraphStore:
     @property
     def get_schema(self) -> str:
         """Returns the schema of the Graph database"""
@@ -61,6 +61,12 @@ class FakeGraphStore(GraphStore):
     ) -> None:
         """Take GraphDocument as input as uses it to construct a graph."""
         pass
+
+
+def test_graph_store() -> None:
+    """Tests that FakeGraphStore satisfies the GraphStore protocol requirements."""
+    graph = FakeGraphStore()
+    assert isinstance(graph, GraphStore)
 
 
 def test_graph_cypher_qa_chain_prompt_selection_1() -> None:
