@@ -9,7 +9,8 @@
 ### Changed
 
 - Made the `source` parameter of `GraphDocument` optional and updated related methods to support this.
-- Suppressed AggregationSkippedNull warnings raised by the Neo4j driver in the Neo4jGraph class when fetching the enhanced_schema.
+- Suppressed AggregationSkippedNull warnings raised by the Neo4j driver in the `Neo4jGraph` class when fetching the enhanced_schema.
+- Modified the `Neo4jGraph` class's enhanced schema Cypher query to utilize the apoc.meta.graph procedure instead of apoc.meta.graphSample.
 - Updated `GraphStore` to be a Protocol, enabling compatibility with `GraphCypherQAChain` without requiring inheritance.
 
 ### Fixed
