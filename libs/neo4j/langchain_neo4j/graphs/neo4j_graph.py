@@ -546,7 +546,8 @@ class Neo4jGraph(GraphStore):
         }
         if self._enhanced_schema:
             schema_counts = self.query(
-                "CALL apoc.meta.graph() YIELD nodes, relationships "
+                "CALL apoc.meta.graph({sample: 1000, maxRels: 100}) "
+                "YIELD nodes, relationships "
                 "RETURN nodes, [rel in relationships | {name:apoc.any.property"
                 "(rel, 'type'), count: apoc.any.property(rel, 'count')}]"
                 " AS relationships"
