@@ -157,6 +157,7 @@ def test_versioning_check(
     is_5_23_or_above: bool,
 ) -> None:
     with patch.object(mock_vector_store, "query"):
+        assert isinstance(mock_vector_store.query, MagicMock)
         mock_vector_store.query.return_value = [
             {"versions": [version], "edition": "enterprise"}
         ]
