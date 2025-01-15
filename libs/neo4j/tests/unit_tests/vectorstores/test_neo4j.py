@@ -139,6 +139,33 @@ def neo4j_vector_factory() -> Any:
     return _create_vector_store
 
 
+@pytest.mark.parametrize(
+    "description, version, is_5_23_or_above",
+    [
+        ("SemVer, < 5.23", "5.22.0", False),
+        ("SemVer, > 5.23", "5.24.0", True),
+        ("SemVer, < 5.23, Aura", "5.22-aura", False),
+        ("SemVer, > 5.23, Aura", "5.24-aura", True),
+        ("CalVer", "2025.01.0", True),
+        ("CalVer, Aura", "2025.01-aura", True),
+    ],
+)
+def test_versioning_check(
+    mock_vector_store: Neo4jVector,
+    description: str,
+    version: str,
+    is_5_23_or_above: bool,
+) -> None:
+    with patch.object(mock_vector_store, "query"):
+        mock_vector_store.query.return_value = [
+            {"versions": [version], "edition": "enterprise"}
+        ]
+        mock_vector_store.verify_version()
+        assert (
+            mock_vector_store.neo4j_version_is_5_23_or_above is is_5_23_or_above
+        ), f"Failed test case: {description}"
+
+
 def test_escaping_lucene() -> None:
     """Test escaping lucene characters"""
     assert remove_lucene_chars("Hello+World") == "Hello World"
