@@ -2,6 +2,8 @@
 
 ## Next
 
+## 0.3.0
+
 ### Added
 
 - Optional parameter to specify embedding dimension in `Neo4jVector`, avoiding the need to query the embedding model.
