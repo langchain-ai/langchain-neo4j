@@ -290,6 +290,8 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
 def _remove_backticks(text: str) -> str:
     return text.replace("`", "")
 
+def _replace_space(text: str) -> str:
+    return text.replace(" ","_")
 
 class Neo4jGraph(GraphStore):
     """Neo4j database wrapper for various graph operations.
@@ -689,7 +691,7 @@ class Neo4jGraph(GraphStore):
                     "data": [
                         {
                             "source": el.source.id,
-                            "source_label": _remove_backticks(el.source.type),
+                            "source_label": _replace_space(_remove_backticks(el.source.type)),
                             "target": el.target.id,
                             "target_label": _remove_backticks(el.target.type),
                             "type": _remove_backticks(
