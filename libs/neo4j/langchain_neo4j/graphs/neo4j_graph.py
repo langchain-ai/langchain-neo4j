@@ -529,7 +529,7 @@ class Neo4jGraph(GraphStore):
             constraint = self.query("SHOW CONSTRAINTS")
             index = self.query(
                 "CALL apoc.schema.nodes() YIELD label, properties, type, size, "
-                "valuesSelectivity WHERE type = 'RANGE' RETURN *, "
+                "valuesSelectivity WHERE type IN ['RANGE', 'VECTOR'] RETURN *, "
                 "size * valuesSelectivity as distinctValues"
             )
         except (
@@ -780,7 +780,7 @@ class Neo4jGraph(GraphStore):
                     for el in self.structured_schema["metadata"]["index"]
                     if el["label"] == label_or_type
                     and el["properties"] == [prop_name]
-                    and el["type"] == "RANGE"
+                    and el["type"] in ["RANGE", "VECTOR"]
                 ]
                 if prop_type == "STRING":
                     if (
