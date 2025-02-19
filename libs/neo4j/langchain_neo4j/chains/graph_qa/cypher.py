@@ -83,6 +83,8 @@ def construct_schema(
     def filter_func(x: str) -> bool:
         return x in include_types if include_types else x not in exclude_types
 
+    schema_metadata = structured_schema.get('metadata')
+
     filtered_schema: Dict[str, Any] = {
         "node_props": {
             k: v
@@ -98,6 +100,11 @@ def construct_schema(
             r
             for r in structured_schema.get("relationships", [])
             if all(filter_func(r[t]) for t in ["start", "end", "type"])
+        ],
+        "index": [
+            i
+            for i in schema_metadata.get("index", [])
+            if filter_func(i)
         ],
     }
 
@@ -123,6 +130,14 @@ def construct_schema(
         for el in filtered_schema["relationships"]
     ]
 
+    # Format indexes
+    formatted_indexes = []
+    for index in filtered_schema["index"]:
+        props_str = []
+        for k, v in index.items():
+            props_str.append(f"{k}: {v if type(v) != list else ', '.join(v)}")
+        formatted_indexes.append(f"{{{', '.join(props_str)}}})")
+
     return "\n".join(
         [
             "Node properties are the following:",
@@ -131,6 +146,8 @@ def construct_schema(
             ",".join(formatted_rel_props),
             "The relationships are the following:",
             ",".join(formatted_rels),
+            "The indexes are the following:",
+            ",".join(formatted_indexes),
         ]
     )
 
