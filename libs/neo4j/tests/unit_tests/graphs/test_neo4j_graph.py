@@ -1,4 +1,4 @@
-from typing import Any, Dict, Generator
+from typing import Dict, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
