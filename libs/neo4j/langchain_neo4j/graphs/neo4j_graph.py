@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Type
 
 import neo4j
 from langchain_core.utils import get_from_dict_or_env
+from neo4j_graphrag.schema import _value_sanitize
 
 from langchain_neo4j.graphs.graph_document import GraphDocument
 from langchain_neo4j.graphs.graph_store import GraphStore
@@ -64,52 +65,6 @@ def clean_string_values(text: str) -> str:
         str: The cleaned text.
     """
     return text.replace("\n", " ").replace("\r", " ")
-
-
-def value_sanitize(d: Any) -> Any:
-    """Sanitize the input dictionary or list.
-
-    Sanitizes the input by removing embedding-like values,
-    lists with more than 128 elements, that are mostly irrelevant for
-    generating answers in a LLM context. These properties, if left in
-    results, can occupy significant context space and detract from
-    the LLM's performance by introducing unnecessary noise and cost.
-
-    Args:
-        d (Any): The input dictionary or list to sanitize.
-
-    Returns:
-        Any: The sanitized dictionary or list.
-    """
-    if isinstance(d, dict):
-        new_dict = {}
-        for key, value in d.items():
-            if isinstance(value, dict):
-                sanitized_value = value_sanitize(value)
-                if (
-                    sanitized_value is not None
-                ):  # Check if the sanitized value is not None
-                    new_dict[key] = sanitized_value
-            elif isinstance(value, list):
-                if len(value) < LIST_LIMIT:
-                    sanitized_value = value_sanitize(value)
-                    if (
-                        sanitized_value is not None
-                    ):  # Check if the sanitized value is not None
-                        new_dict[key] = sanitized_value
-                # Do not include the key if the list is oversized
-            else:
-                new_dict[key] = value
-        return new_dict
-    elif isinstance(d, list):
-        if len(d) < LIST_LIMIT:
-            return [
-                value_sanitize(item) for item in d if value_sanitize(item) is not None
-            ]
-        else:
-            return None
-    else:
-        return d
 
 
 def _get_node_import_query(baseEntityLabel: bool, include_source: bool) -> str:
@@ -454,7 +409,7 @@ class Neo4jGraph(GraphStore):
                 )
                 json_data = [r.data() for r in data]
                 if self.sanitize:
-                    json_data = [value_sanitize(el) for el in json_data]
+                    json_data = [_value_sanitize(el) for el in json_data]
                 return json_data
             except Neo4jError as e:
                 if not (
@@ -484,7 +439,7 @@ class Neo4jGraph(GraphStore):
             result = session.run(Query(text=query, timeout=self.timeout), params)
             json_data = [r.data() for r in result]
             if self.sanitize:
-                json_data = [value_sanitize(el) for el in json_data]
+                json_data = [_value_sanitize(el) for el in json_data]
             return json_data
 
     def refresh_schema(self) -> None:

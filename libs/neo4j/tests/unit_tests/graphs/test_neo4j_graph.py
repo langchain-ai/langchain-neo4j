@@ -9,7 +9,6 @@ from langchain_neo4j.graphs.neo4j_graph import (
     LIST_LIMIT,
     Neo4jGraph,
     _format_schema,
-    value_sanitize,
 )
 
 
@@ -22,63 +21,6 @@ def mock_neo4j_driver() -> Generator[MagicMock, None, None]:
         mock_driver_instance.execute_query = MagicMock(return_value=([], None, None))
         mock_driver_instance._closed = False
         yield mock_driver_instance
-
-
-@pytest.mark.parametrize(
-    "description, input_value, expected_output",
-    [
-        (
-            "Small list",
-            {"key1": "value1", "small_list": list(range(15))},
-            {"key1": "value1", "small_list": list(range(15))},
-        ),
-        (
-            "Oversized list",
-            {"key1": "value1", "oversized_list": list(range(LIST_LIMIT + 1))},
-            {"key1": "value1"},
-        ),
-        (
-            "Nested oversized list",
-            {"key1": "value1", "oversized_list": {"key": list(range(150))}},
-            {"key1": "value1", "oversized_list": {}},
-        ),
-        (
-            "Dict in list",
-            {
-                "key1": "value1",
-                "oversized_list": [1, 2, {"key": list(range(LIST_LIMIT + 1))}],
-            },
-            {"key1": "value1", "oversized_list": [1, 2, {}]},
-        ),
-        (
-            "Dict in nested list",
-            {
-                "key1": "value1",
-                "deeply_nested_lists": [
-                    [[[{"final_nested_key": list(range(LIST_LIMIT + 1))}]]]
-                ],
-            },
-            {"key1": "value1", "deeply_nested_lists": [[[[{}]]]]},
-        ),
-        (
-            "Bare oversized list",
-            list(range(LIST_LIMIT + 1)),
-            None,
-        ),
-        (
-            "None value",
-            None,
-            None,
-        ),
-    ],
-)
-def test_value_sanitize(
-    description: str, input_value: Dict[str, Any], expected_output: Any
-) -> None:
-    """Test the value_sanitize function."""
-    assert (
-        value_sanitize(input_value) == expected_output
-    ), f"Failed test case: {description}"
 
 
 def test_driver_state_management(mock_neo4j_driver: MagicMock) -> None:
