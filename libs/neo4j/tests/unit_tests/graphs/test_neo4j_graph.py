@@ -217,7 +217,7 @@ def test_refresh_schema_handles_client_error(mock_neo4j_driver: MagicMock) -> No
         {
             "output": {
                 "properties": [{"property": "property_a", "type": "STRING"}],
-                "labels": "LabelA",
+                "label": "LabelA",
             }
         }
     ]

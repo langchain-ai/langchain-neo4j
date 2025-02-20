@@ -3,7 +3,12 @@ from typing import Any, Dict, List, Optional, Type
 
 import neo4j
 from langchain_core.utils import get_from_dict_or_env
-from neo4j_graphrag.schema import _value_sanitize
+from neo4j_graphrag.schema import (
+    NODE_PROPERTIES_QUERY,
+    REL_PROPERTIES_QUERY,
+    REL_QUERY,
+    _value_sanitize,
+)
 
 from langchain_neo4j.graphs.graph_document import GraphDocument
 from langchain_neo4j.graphs.graph_store import GraphStore
@@ -16,34 +21,6 @@ LIST_LIMIT = 128
 # Threshold for returning all available prop values in graph schema
 DISTINCT_VALUE_LIMIT = 10
 
-node_properties_query = """
-CALL apoc.meta.data()
-YIELD label, other, elementType, type, property
-WHERE NOT type = "RELATIONSHIP" AND elementType = "node" 
-  AND NOT label IN $EXCLUDED_LABELS
-WITH label AS nodeLabels, collect({property:property, type:type}) AS properties
-RETURN {labels: nodeLabels, properties: properties} AS output
-
-"""
-
-rel_properties_query = """
-CALL apoc.meta.data()
-YIELD label, other, elementType, type, property
-WHERE NOT type = "RELATIONSHIP" AND elementType = "relationship"
-      AND NOT label in $EXCLUDED_LABELS
-WITH label AS nodeLabels, collect({property:property, type:type}) AS properties
-RETURN {type: nodeLabels, properties: properties} AS output
-"""
-
-rel_query = """
-CALL apoc.meta.data()
-YIELD label, other, elementType, type, property
-WHERE type = "RELATIONSHIP" AND elementType = "node"
-UNWIND other AS other_node
-WITH * WHERE NOT label IN $EXCLUDED_LABELS
-    AND NOT other_node IN $EXCLUDED_LABELS
-RETURN {start: label, type: property, end: toString(other_node)} AS output
-"""
 
 include_docs_query = (
     "MERGE (d:Document {id:$document.metadata.id}) "
@@ -455,20 +432,20 @@ class Neo4jGraph(GraphStore):
         node_properties = [
             el["output"]
             for el in self.query(
-                node_properties_query,
+                NODE_PROPERTIES_QUERY,
                 params={"EXCLUDED_LABELS": EXCLUDED_LABELS + [BASE_ENTITY_LABEL]},
             )
         ]
         rel_properties = [
             el["output"]
             for el in self.query(
-                rel_properties_query, params={"EXCLUDED_LABELS": EXCLUDED_RELS}
+                REL_PROPERTIES_QUERY, params={"EXCLUDED_LABELS": EXCLUDED_RELS}
             )
         ]
         relationships = [
             el["output"]
             for el in self.query(
-                rel_query,
+                REL_QUERY,
                 params={"EXCLUDED_LABELS": EXCLUDED_LABELS + [BASE_ENTITY_LABEL]},
             )
         ]
@@ -488,7 +465,7 @@ class Neo4jGraph(GraphStore):
             index = []
 
         self.structured_schema = {
-            "node_props": {el["labels"]: el["properties"] for el in node_properties},
+            "node_props": {el["label"]: el["properties"] for el in node_properties},
             "rel_props": {el["type"]: el["properties"] for el in rel_properties},
             "relationships": relationships,
             "metadata": {"constraint": constraint, "index": index},

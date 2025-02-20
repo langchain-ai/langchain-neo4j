@@ -3,15 +3,11 @@ import urllib
 
 import pytest
 from langchain_core.documents import Document
+from neo4j_graphrag.schema import NODE_PROPERTIES_QUERY, REL_PROPERTIES_QUERY, REL_QUERY
 
 from langchain_neo4j import Neo4jGraph
 from langchain_neo4j.graphs.graph_document import GraphDocument, Node, Relationship
-from langchain_neo4j.graphs.neo4j_graph import (
-    BASE_ENTITY_LABEL,
-    node_properties_query,
-    rel_properties_query,
-    rel_query,
-)
+from langchain_neo4j.graphs.neo4j_graph import BASE_ENTITY_LABEL
 from tests.integration_tests.utils import Neo4jCredentials
 
 test_data = [
@@ -87,20 +83,20 @@ def test_cypher_return_correct_schema(neo4j_credentials: Neo4jCredentials) -> No
     graph.refresh_schema()
 
     node_properties = graph.query(
-        node_properties_query, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL]}
+        NODE_PROPERTIES_QUERY, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL]}
     )
     relationships_properties = graph.query(
-        rel_properties_query, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL]}
+        REL_PROPERTIES_QUERY, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL]}
     )
     relationships = graph.query(
-        rel_query, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL]}
+        REL_QUERY, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL]}
     )
 
     expected_node_properties = [
         {
             "output": {
                 "properties": [{"property": "property_a", "type": "STRING"}],
-                "labels": "LabelA",
+                "label": "LabelA",
             }
         }
     ]
