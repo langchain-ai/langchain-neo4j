@@ -5,15 +5,9 @@ import neo4j
 from langchain_core.utils import get_from_dict_or_env
 from neo4j_graphrag.schema import (
     BASE_ENTITY_LABEL,
-    EXCLUDED_LABELS,
-    EXCLUDED_RELS,
-    EXHAUSTIVE_SEARCH_LIMIT,
-    NODE_PROPERTIES_QUERY,
-    REL_PROPERTIES_QUERY,
-    REL_QUERY,
     _value_sanitize,
     format_schema,
-    get_enhanced_schema_cypher,
+    get_structured_schema,
 )
 
 from langchain_neo4j.graphs.graph_document import GraphDocument
@@ -281,117 +275,13 @@ class Neo4jGraph(GraphStore):
             RuntimeError: If the connection has been closed.
         """
         self._check_driver_state()
-        from neo4j.exceptions import ClientError, CypherTypeError
-
-        node_properties = [
-            el["output"]
-            for el in self.query(
-                NODE_PROPERTIES_QUERY,
-                params={"EXCLUDED_LABELS": EXCLUDED_LABELS + [BASE_ENTITY_LABEL]},
-            )
-        ]
-        rel_properties = [
-            el["output"]
-            for el in self.query(
-                REL_PROPERTIES_QUERY, params={"EXCLUDED_LABELS": EXCLUDED_RELS}
-            )
-        ]
-        relationships = [
-            el["output"]
-            for el in self.query(
-                REL_QUERY,
-                params={"EXCLUDED_LABELS": EXCLUDED_LABELS + [BASE_ENTITY_LABEL]},
-            )
-        ]
-
-        # Get constraints & indexes
-        try:
-            constraint = self.query("SHOW CONSTRAINTS")
-            index = self.query(
-                "CALL apoc.schema.nodes() YIELD label, properties, type, size, "
-                "valuesSelectivity WHERE type = 'RANGE' RETURN *, "
-                "size * valuesSelectivity as distinctValues"
-            )
-        except (
-            ClientError
-        ):  # Read-only user might not have access to schema information
-            constraint = []
-            index = []
-
-        self.structured_schema = {
-            "node_props": {el["label"]: el["properties"] for el in node_properties},
-            "rel_props": {el["type"]: el["properties"] for el in rel_properties},
-            "relationships": relationships,
-            "metadata": {"constraint": constraint, "index": index},
-        }
-        if self._enhanced_schema:
-            schema_counts = self.query(
-                "CALL apoc.meta.graph({sample: 1000, maxRels: 100}) "
-                "YIELD nodes, relationships "
-                "RETURN nodes, [rel in relationships | {name:apoc.any.property"
-                "(rel, 'type'), count: apoc.any.property(rel, 'count')}]"
-                " AS relationships"
-            )
-            # Update node info
-            for node in schema_counts[0]["nodes"]:
-                # Skip bloom labels
-                if node["name"] in EXCLUDED_LABELS:
-                    continue
-                node_props = self.structured_schema["node_props"].get(node["name"])
-                if not node_props:  # The node has no properties
-                    continue
-                enhanced_cypher = get_enhanced_schema_cypher(
-                    driver=self._driver,
-                    structured_schema=self.structured_schema,
-                    label_or_type=node["name"],
-                    properties=node_props,
-                    exhaustive=node["count"] < EXHAUSTIVE_SEARCH_LIMIT,
-                )
-                # Due to schema-flexible nature of neo4j errors can happen
-                try:
-                    enhanced_info = self.query(
-                        enhanced_cypher,
-                        # Disable the
-                        # Neo.ClientNotification.Statement.AggregationSkippedNull
-                        # notifications raised by the use of collect in the enhanced
-                        # schema query
-                        session_params={
-                            "notifications_disabled_categories": ["UNRECOGNIZED"]
-                        },
-                    )[0]["output"]
-                    for prop in node_props:
-                        if prop["property"] in enhanced_info:
-                            prop.update(enhanced_info[prop["property"]])
-                except CypherTypeError:
-                    continue
-            # Update rel info
-            for rel in schema_counts[0]["relationships"]:
-                # Skip bloom labels
-                if rel["name"] in EXCLUDED_RELS:
-                    continue
-                rel_props = self.structured_schema["rel_props"].get(rel["name"])
-                if not rel_props:  # The rel has no properties
-                    continue
-                enhanced_cypher = get_enhanced_schema_cypher(
-                    driver=self._driver,
-                    structured_schema=self.structured_schema,
-                    label_or_type=rel["name"],
-                    properties=rel_props,
-                    exhaustive=rel["count"] < EXHAUSTIVE_SEARCH_LIMIT,
-                    is_relationship=True,
-                )
-                try:
-                    enhanced_info = self.query(enhanced_cypher)[0]["output"]
-                    for prop in rel_props:
-                        if prop["property"] in enhanced_info:
-                            prop.update(enhanced_info[prop["property"]])
-                # Due to schema-flexible nature of neo4j errors can happen
-                except CypherTypeError:
-                    continue
-
-        schema = format_schema(self.structured_schema, self._enhanced_schema)
-
-        self.schema = schema
+        self.structured_schema = get_structured_schema(
+            driver=self._driver,
+            is_enhanced=self._enhanced_schema,
+        )
+        self.schema = format_schema(
+            schema=self.structured_schema, is_enhanced=self._enhanced_schema
+        )
 
     def add_graph_documents(
         self,

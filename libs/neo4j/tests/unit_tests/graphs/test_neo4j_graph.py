@@ -2,6 +2,9 @@ from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
+from neo4j._data import Record
+from neo4j._sync.driver import EagerResult
+from neo4j._work.summary import ResultSummary
 from neo4j.exceptions import ClientError, ConfigurationError, Neo4jError
 from neo4j_graphrag.schema import LIST_LIMIT
 
@@ -15,7 +18,11 @@ def mock_neo4j_driver() -> Generator[MagicMock, None, None]:
         mock_driver_instance = MagicMock()
         mock_driver.return_value = mock_driver_instance
         mock_driver_instance.verify_connectivity.return_value = None
-        mock_driver_instance.execute_query = MagicMock(return_value=([], None, None))
+        mock_driver_instance.execute_query = MagicMock(
+            return_value=EagerResult(
+                records=[], summary=MagicMock(spec=ResultSummary), keys=[]
+            )
+        )
         mock_driver_instance._closed = False
         yield mock_driver_instance
 
@@ -178,6 +185,7 @@ def test_query_fallback_execution(mock_neo4j_driver: MagicMock) -> None:
         password="password",
         database="test_db",
         sanitize=True,
+        refresh_schema=False,
     )
     mock_session = MagicMock()
     mock_result = MagicMock()
@@ -209,37 +217,47 @@ def test_refresh_schema_handles_client_error(mock_neo4j_driver: MagicMock) -> No
         username="neo4j",
         password="password",
         database="test_db",
+        refresh_schema=False,
     )
     node_properties = [
-        {
-            "output": {
-                "properties": [{"property": "property_a", "type": "STRING"}],
-                "label": "LabelA",
+        Record(
+            {
+                "output": {
+                    "properties": [{"property": "property_a", "type": "STRING"}],
+                    "label": "LabelA",
+                }
             }
-        }
+        )
     ]
     relationships_properties = [
-        {
-            "output": {
-                "type": "REL_TYPE",
-                "properties": [{"property": "rel_prop", "type": "STRING"}],
+        Record(
+            {
+                "output": {
+                    "type": "REL_TYPE",
+                    "properties": [{"property": "rel_prop", "type": "STRING"}],
+                }
             }
-        }
+        )
     ]
     relationships = [
-        {"output": {"start": "LabelA", "type": "REL_TYPE", "end": "LabelB"}},
-        {"output": {"start": "LabelA", "type": "REL_TYPE", "end": "LabelC"}},
+        Record({"output": {"start": "LabelA", "type": "REL_TYPE", "end": "LabelB"}}),
+        Record({"output": {"start": "LabelA", "type": "REL_TYPE", "end": "LabelC"}}),
     ]
 
-    # Mock the query method to raise ClientError for constraint and index queries
-    graph.query = MagicMock(  # type: ignore[method-assign]
-        side_effect=[
-            node_properties,
-            relationships_properties,
-            relationships,
-            ClientError("Mock ClientError"),
-        ]
-    )
+    mock_neo4j_driver.execute_query.side_effect = [
+        EagerResult(
+            records=node_properties, summary=MagicMock(spec=ResultSummary), keys=[]
+        ),
+        EagerResult(
+            records=relationships_properties,
+            summary=MagicMock(spec=ResultSummary),
+            keys=[],
+        ),
+        EagerResult(
+            records=relationships, summary=MagicMock(spec=ResultSummary), keys=[]
+        ),
+        ClientError("Mock ClientError"),
+    ]
     graph.refresh_schema()
 
     # Assertions
@@ -248,8 +266,9 @@ def test_refresh_schema_handles_client_error(mock_neo4j_driver: MagicMock) -> No
     assert graph.structured_schema["metadata"]["index"] == []
 
     # Ensure the query method was called as expected
-    assert graph.query.call_count == 4
-    graph.query.assert_any_call("SHOW CONSTRAINTS")
+    assert mock_neo4j_driver.execute_query.call_count == 4
+    calls = mock_neo4j_driver.execute_query.call_args_list
+    assert any(call.args[0].text == "SHOW CONSTRAINTS" for call in calls)
 
 
 def test_get_schema(mock_neo4j_driver: MagicMock) -> None:
