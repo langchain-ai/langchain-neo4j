@@ -5,12 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import neo4j
 import pytest
+from neo4j_graphrag.types import SearchType
 
 from langchain_neo4j.vectorstores.neo4j_vector import (
     LOGICAL_OPERATORS,
     IndexType,
     Neo4jVector,
-    SearchType,
     _get_search_index_query,
     _handle_field_filter,
     check_if_not_null,

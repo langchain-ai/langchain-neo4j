@@ -22,6 +22,7 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.utils import get_from_dict_or_env
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores.utils import maximal_marginal_relevance
+from neo4j_graphrag.types import SearchType
 
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
 from langchain_neo4j.vectorstores.utils import DistanceStrategy
@@ -60,14 +61,6 @@ SUPPORTED_OPERATORS = (
     .union(LOGICAL_OPERATORS)
     .union(SPECIAL_CASED_OPERATORS)
 )
-
-
-class SearchType(str, enum.Enum):
-    """Enumerator of the Distance strategies."""
-
-    VECTOR = "vector"
-    HYBRID = "hybrid"
-
 
 DEFAULT_SEARCH_TYPE = SearchType.VECTOR
 

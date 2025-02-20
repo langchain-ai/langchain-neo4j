@@ -5,12 +5,12 @@ from typing import Any, Dict, List, cast
 
 import pytest
 from langchain_core.documents import Document
+from neo4j_graphrag.types import SearchType
 from yaml import safe_load
 
 from langchain_neo4j import Neo4jGraph
 from langchain_neo4j.vectorstores.neo4j_vector import (
     Neo4jVector,
-    SearchType,
     _get_search_index_query,
 )
 from langchain_neo4j.vectorstores.utils import DistanceStrategy
