@@ -5,7 +5,6 @@ import neo4j
 from langchain_core.utils import get_from_dict_or_env
 from neo4j_graphrag.schema import (
     BASE_ENTITY_LABEL,
-    DISTINCT_VALUE_LIMIT,
     EXCLUDED_LABELS,
     EXCLUDED_RELS,
     EXHAUSTIVE_SEARCH_LIMIT,
@@ -14,6 +13,7 @@ from neo4j_graphrag.schema import (
     REL_QUERY,
     _value_sanitize,
     format_schema,
+    get_enhanced_schema_cypher,
 )
 
 from langchain_neo4j.graphs.graph_document import GraphDocument
@@ -340,8 +340,12 @@ class Neo4jGraph(GraphStore):
                 node_props = self.structured_schema["node_props"].get(node["name"])
                 if not node_props:  # The node has no properties
                     continue
-                enhanced_cypher = self._enhanced_schema_cypher(
-                    node["name"], node_props, node["count"] < EXHAUSTIVE_SEARCH_LIMIT
+                enhanced_cypher = get_enhanced_schema_cypher(
+                    driver=self._driver,
+                    structured_schema=self.structured_schema,
+                    label_or_type=node["name"],
+                    properties=node_props,
+                    exhaustive=node["count"] < EXHAUSTIVE_SEARCH_LIMIT,
                 )
                 # Due to schema-flexible nature of neo4j errors can happen
                 try:
@@ -368,10 +372,12 @@ class Neo4jGraph(GraphStore):
                 rel_props = self.structured_schema["rel_props"].get(rel["name"])
                 if not rel_props:  # The rel has no properties
                     continue
-                enhanced_cypher = self._enhanced_schema_cypher(
-                    rel["name"],
-                    rel_props,
-                    rel["count"] < EXHAUSTIVE_SEARCH_LIMIT,
+                enhanced_cypher = get_enhanced_schema_cypher(
+                    driver=self._driver,
+                    structured_schema=self.structured_schema,
+                    label_or_type=rel["name"],
+                    properties=rel_props,
+                    exhaustive=rel["count"] < EXHAUSTIVE_SEARCH_LIMIT,
                     is_relationship=True,
                 )
                 try:
@@ -481,170 +487,6 @@ class Neo4jGraph(GraphStore):
                     ]
                 },
             )
-
-    def _enhanced_schema_cypher(
-        self,
-        label_or_type: str,
-        properties: List[Dict[str, Any]],
-        exhaustive: bool,
-        is_relationship: bool = False,
-    ) -> str:
-        if is_relationship:
-            match_clause = f"MATCH ()-[n:`{label_or_type}`]->()"
-        else:
-            match_clause = f"MATCH (n:`{label_or_type}`)"
-
-        with_clauses = []
-        return_clauses = []
-        output_dict = {}
-        if exhaustive:
-            for prop in properties:
-                prop_name = prop["property"]
-                prop_type = prop["type"]
-                if prop_type == "STRING":
-                    with_clauses.append(
-                        (
-                            f"collect(distinct substring(toString(n.`{prop_name}`)"
-                            f", 0, 50)) AS `{prop_name}_values`"
-                        )
-                    )
-                    return_clauses.append(
-                        (
-                            f"values:`{prop_name}_values`[..{DISTINCT_VALUE_LIMIT}],"
-                            f" distinct_count: size(`{prop_name}_values`)"
-                        )
-                    )
-                elif prop_type in [
-                    "INTEGER",
-                    "FLOAT",
-                    "DATE",
-                    "DATE_TIME",
-                    "LOCAL_DATE_TIME",
-                ]:
-                    with_clauses.append(f"min(n.`{prop_name}`) AS `{prop_name}_min`")
-                    with_clauses.append(f"max(n.`{prop_name}`) AS `{prop_name}_max`")
-                    with_clauses.append(
-                        f"count(distinct n.`{prop_name}`) AS `{prop_name}_distinct`"
-                    )
-                    return_clauses.append(
-                        (
-                            f"min: toString(`{prop_name}_min`), "
-                            f"max: toString(`{prop_name}_max`), "
-                            f"distinct_count: `{prop_name}_distinct`"
-                        )
-                    )
-                elif prop_type == "LIST":
-                    with_clauses.append(
-                        (
-                            f"min(size(n.`{prop_name}`)) AS `{prop_name}_size_min`, "
-                            f"max(size(n.`{prop_name}`)) AS `{prop_name}_size_max`"
-                        )
-                    )
-                    return_clauses.append(
-                        f"min_size: `{prop_name}_size_min`, "
-                        f"max_size: `{prop_name}_size_max`"
-                    )
-                elif prop_type in ["BOOLEAN", "POINT", "DURATION"]:
-                    continue
-                output_dict[prop_name] = "{" + return_clauses.pop() + "}"
-        else:
-            # Just sample 5 random nodes
-            match_clause += " WITH n LIMIT 5"
-            for prop in properties:
-                prop_name = prop["property"]
-                prop_type = prop["type"]
-
-                # Check if indexed property, we can still do exhaustive
-                prop_index = [
-                    el
-                    for el in self.structured_schema["metadata"]["index"]
-                    if el["label"] == label_or_type
-                    and el["properties"] == [prop_name]
-                    and el["type"] == "RANGE"
-                ]
-                if prop_type == "STRING":
-                    if (
-                        prop_index
-                        and prop_index[0].get("size") > 0
-                        and prop_index[0].get("distinctValues") <= DISTINCT_VALUE_LIMIT
-                    ):
-                        distinct_values = self.query(
-                            f"CALL apoc.schema.properties.distinct("
-                            f"'{label_or_type}', '{prop_name}') YIELD value"
-                        )[0]["value"]
-                        return_clauses.append(
-                            (
-                                f"values: {distinct_values},"
-                                f" distinct_count: {len(distinct_values)}"
-                            )
-                        )
-                    else:
-                        with_clauses.append(
-                            (
-                                f"collect(distinct substring(toString(n.`{prop_name}`)"
-                                f", 0, 50)) AS `{prop_name}_values`"
-                            )
-                        )
-                        return_clauses.append(f"values: `{prop_name}_values`")
-                elif prop_type in [
-                    "INTEGER",
-                    "FLOAT",
-                    "DATE",
-                    "DATE_TIME",
-                    "LOCAL_DATE_TIME",
-                ]:
-                    if not prop_index:
-                        with_clauses.append(
-                            f"collect(distinct toString(n.`{prop_name}`)) "
-                            f"AS `{prop_name}_values`"
-                        )
-                        return_clauses.append(f"values: `{prop_name}_values`")
-                    else:
-                        with_clauses.append(
-                            f"min(n.`{prop_name}`) AS `{prop_name}_min`"
-                        )
-                        with_clauses.append(
-                            f"max(n.`{prop_name}`) AS `{prop_name}_max`"
-                        )
-                        with_clauses.append(
-                            f"count(distinct n.`{prop_name}`) AS `{prop_name}_distinct`"
-                        )
-                        return_clauses.append(
-                            (
-                                f"min: toString(`{prop_name}_min`), "
-                                f"max: toString(`{prop_name}_max`), "
-                                f"distinct_count: `{prop_name}_distinct`"
-                            )
-                        )
-
-                elif prop_type == "LIST":
-                    with_clauses.append(
-                        (
-                            f"min(size(n.`{prop_name}`)) AS `{prop_name}_size_min`, "
-                            f"max(size(n.`{prop_name}`)) AS `{prop_name}_size_max`"
-                        )
-                    )
-                    return_clauses.append(
-                        (
-                            f"min_size: `{prop_name}_size_min`, "
-                            f"max_size: `{prop_name}_size_max`"
-                        )
-                    )
-                elif prop_type in ["BOOLEAN", "POINT", "DURATION"]:
-                    continue
-
-                output_dict[prop_name] = "{" + return_clauses.pop() + "}"
-
-        with_clause = "WITH " + ",\n     ".join(with_clauses)
-        return_clause = (
-            "RETURN {"
-            + ", ".join(f"`{k}`: {v}" for k, v in output_dict.items())
-            + "} AS output"
-        )
-
-        # Combine all parts of the Cypher query
-        cypher_query = "\n".join([match_clause, with_clause, return_clause])
-        return cypher_query
 
     def close(self) -> None:
         """
