@@ -9,12 +9,11 @@ from neo4j_graphrag.schema import (
     EXCLUDED_LABELS,
     EXCLUDED_RELS,
     EXHAUSTIVE_SEARCH_LIMIT,
-    LIST_LIMIT,
     NODE_PROPERTIES_QUERY,
     REL_PROPERTIES_QUERY,
     REL_QUERY,
-    _clean_string_values,
     _value_sanitize,
+    format_schema,
 )
 
 from langchain_neo4j.graphs.graph_document import GraphDocument
@@ -73,135 +72,6 @@ def _get_rel_import_query(baseEntityLabel: bool) -> str:
             "{}, row.properties, target) YIELD rel "
             "RETURN distinct 'done'"
         )
-
-
-def _format_schema(schema: Dict, is_enhanced: bool) -> str:
-    formatted_node_props = []
-    formatted_rel_props = []
-    if is_enhanced:
-        # Enhanced formatting for nodes
-        for node_type, properties in schema["node_props"].items():
-            formatted_node_props.append(f"- **{node_type}**")
-            for prop in properties:
-                example = ""
-                if prop["type"] == "STRING" and prop.get("values"):
-                    if prop.get("distinct_count", 11) > DISTINCT_VALUE_LIMIT:
-                        example = (
-                            f'Example: "{_clean_string_values(prop["values"][0])}"'
-                            if prop["values"]
-                            else ""
-                        )
-                    else:  # If less than 10 possible values return all
-                        example = (
-                            (
-                                "Available options: "
-                                f'{[_clean_string_values(el) for el in prop["values"]]}'
-                            )
-                            if prop["values"]
-                            else ""
-                        )
-
-                elif prop["type"] in [
-                    "INTEGER",
-                    "FLOAT",
-                    "DATE",
-                    "DATE_TIME",
-                    "LOCAL_DATE_TIME",
-                ]:
-                    if prop.get("min") and prop.get("max"):
-                        example = f'Min: {prop["min"]}, Max: {prop["max"]}'
-                    else:
-                        example = (
-                            f'Example: "{prop["values"][0]}"'
-                            if prop.get("values")
-                            else ""
-                        )
-                elif prop["type"] == "LIST":
-                    # Skip embeddings
-                    if not prop.get("min_size") or prop["min_size"] > LIST_LIMIT:
-                        continue
-                    example = (
-                        f'Min Size: {prop["min_size"]}, Max Size: {prop["max_size"]}'
-                    )
-                formatted_node_props.append(
-                    f"  - `{prop['property']}`: {prop['type']} {example}"
-                )
-
-        # Enhanced formatting for relationships
-        for rel_type, properties in schema["rel_props"].items():
-            formatted_rel_props.append(f"- **{rel_type}**")
-            for prop in properties:
-                example = ""
-                if prop["type"] == "STRING" and prop.get("values"):
-                    if prop.get("distinct_count", 11) > DISTINCT_VALUE_LIMIT:
-                        example = (
-                            f'Example: "{_clean_string_values(prop["values"][0])}"'
-                            if prop["values"]
-                            else ""
-                        )
-                    else:  # If less than 10 possible values return all
-                        example = (
-                            (
-                                "Available options: "
-                                f'{[_clean_string_values(el) for el in prop["values"]]}'
-                            )
-                            if prop["values"]
-                            else ""
-                        )
-                elif prop["type"] in [
-                    "INTEGER",
-                    "FLOAT",
-                    "DATE",
-                    "DATE_TIME",
-                    "LOCAL_DATE_TIME",
-                ]:
-                    if prop.get("min") and prop.get("max"):  # If we have min/max
-                        example = f'Min: {prop["min"]}, Max: {prop["max"]}'
-                    else:  # return a single value
-                        example = (
-                            f'Example: "{prop["values"][0]}"' if prop["values"] else ""
-                        )
-                elif prop["type"] == "LIST":
-                    # Skip embeddings
-                    if not prop.get("min_size") or prop["min_size"] > LIST_LIMIT:
-                        continue
-                    example = (
-                        f'Min Size: {prop["min_size"]}, Max Size: {prop["max_size"]}'
-                    )
-                formatted_rel_props.append(
-                    f"  - `{prop['property']}`: {prop['type']} {example}"
-                )
-    else:
-        # Format node properties
-        for label, props in schema["node_props"].items():
-            props_str = ", ".join(
-                [f"{prop['property']}: {prop['type']}" for prop in props]
-            )
-            formatted_node_props.append(f"{label} {{{props_str}}}")
-
-        # Format relationship properties using structured_schema
-        for type, props in schema["rel_props"].items():
-            props_str = ", ".join(
-                [f"{prop['property']}: {prop['type']}" for prop in props]
-            )
-            formatted_rel_props.append(f"{type} {{{props_str}}}")
-
-    # Format relationships
-    formatted_rels = [
-        f"(:{el['start']})-[:{el['type']}]->(:{el['end']})"
-        for el in schema["relationships"]
-    ]
-
-    return "\n".join(
-        [
-            "Node properties:",
-            "\n".join(formatted_node_props),
-            "Relationship properties:",
-            "\n".join(formatted_rel_props),
-            "The relationships:",
-            "\n".join(formatted_rels),
-        ]
-    )
 
 
 def _remove_backticks(text: str) -> str:
@@ -513,7 +383,7 @@ class Neo4jGraph(GraphStore):
                 except CypherTypeError:
                     continue
 
-        schema = _format_schema(self.structured_schema, self._enhanced_schema)
+        schema = format_schema(self.structured_schema, self._enhanced_schema)
 
         self.schema = schema
 
