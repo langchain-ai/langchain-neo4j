@@ -4,6 +4,12 @@ from typing import Any, Dict, List, Optional, Type
 import neo4j
 from langchain_core.utils import get_from_dict_or_env
 from neo4j_graphrag.schema import (
+    BASE_ENTITY_LABEL,
+    DISTINCT_VALUE_LIMIT,
+    EXCLUDED_LABELS,
+    EXCLUDED_RELS,
+    EXHAUSTIVE_SEARCH_LIMIT,
+    LIST_LIMIT,
     NODE_PROPERTIES_QUERY,
     REL_PROPERTIES_QUERY,
     REL_QUERY,
@@ -12,15 +18,6 @@ from neo4j_graphrag.schema import (
 
 from langchain_neo4j.graphs.graph_document import GraphDocument
 from langchain_neo4j.graphs.graph_store import GraphStore
-
-BASE_ENTITY_LABEL = "__Entity__"
-EXCLUDED_LABELS = ["_Bloom_Perspective_", "_Bloom_Scene_"]
-EXCLUDED_RELS = ["_Bloom_HAS_SCENE_"]
-EXHAUSTIVE_SEARCH_LIMIT = 10000
-LIST_LIMIT = 128
-# Threshold for returning all available prop values in graph schema
-DISTINCT_VALUE_LIMIT = 10
-
 
 include_docs_query = (
     "MERGE (d:Document {id:$document.metadata.id}) "
