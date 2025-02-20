@@ -13,6 +13,7 @@ from neo4j_graphrag.schema import (
     NODE_PROPERTIES_QUERY,
     REL_PROPERTIES_QUERY,
     REL_QUERY,
+    _clean_string_values,
     _value_sanitize,
 )
 
@@ -25,20 +26,6 @@ include_docs_query = (
     "SET d += $document.metadata "
     "WITH d "
 )
-
-
-def clean_string_values(text: str) -> str:
-    """Clean string values for schema.
-
-    Cleans the input text by replacing newline and carriage return characters.
-
-    Args:
-        text (str): The input text to clean.
-
-    Returns:
-        str: The cleaned text.
-    """
-    return text.replace("\n", " ").replace("\r", " ")
 
 
 def _get_node_import_query(baseEntityLabel: bool, include_source: bool) -> str:
@@ -100,7 +87,7 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
                 if prop["type"] == "STRING" and prop.get("values"):
                     if prop.get("distinct_count", 11) > DISTINCT_VALUE_LIMIT:
                         example = (
-                            f'Example: "{clean_string_values(prop["values"][0])}"'
+                            f'Example: "{_clean_string_values(prop["values"][0])}"'
                             if prop["values"]
                             else ""
                         )
@@ -108,7 +95,7 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
                         example = (
                             (
                                 "Available options: "
-                                f'{[clean_string_values(el) for el in prop["values"]]}'
+                                f'{[_clean_string_values(el) for el in prop["values"]]}'
                             )
                             if prop["values"]
                             else ""
@@ -148,7 +135,7 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
                 if prop["type"] == "STRING" and prop.get("values"):
                     if prop.get("distinct_count", 11) > DISTINCT_VALUE_LIMIT:
                         example = (
-                            f'Example: "{clean_string_values(prop["values"][0])}"'
+                            f'Example: "{_clean_string_values(prop["values"][0])}"'
                             if prop["values"]
                             else ""
                         )
@@ -156,7 +143,7 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
                         example = (
                             (
                                 "Available options: "
-                                f'{[clean_string_values(el) for el in prop["values"]]}'
+                                f'{[_clean_string_values(el) for el in prop["values"]]}'
                             )
                             if prop["values"]
                             else ""
