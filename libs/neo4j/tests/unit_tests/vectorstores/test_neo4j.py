@@ -8,13 +8,10 @@ import pytest
 from neo4j_graphrag.types import SearchType
 
 from langchain_neo4j.vectorstores.neo4j_vector import (
-    LOGICAL_OPERATORS,
     IndexType,
     Neo4jVector,
     _get_search_index_query,
-    _handle_field_filter,
     check_if_not_null,
-    construct_metadata_filter,
     dict_to_yaml_str,
     remove_lucene_chars,
 )
@@ -391,165 +388,6 @@ def test_check_if_not_null_with_none_value() -> None:
         check_if_not_null(props, values)
 
     assert "must not be None or empty string" in str(exc_info.value)
-
-
-def test_handle_field_filter_invalid_field_type() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field=123, value="some_value")  # type: ignore[arg-type]
-    assert "field should be a string" in str(exc_info.value)
-
-
-def test_handle_field_filter_field_starts_with_dollar() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field="$invalid_field", value="some_value")
-    assert "Invalid filter condition" in str(exc_info.value)
-
-
-def test_handle_field_filter_invalid_field_name() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field="invalid-field!", value="some_value")
-    assert "Invalid field name" in str(exc_info.value)
-
-
-def test_handle_field_filter_multiple_keys_in_filter() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field="age", value={"$gt": 30, "$lt": 40})
-    assert "Invalid filter condition" in str(exc_info.value)
-
-
-def test_handle_field_filter_invalid_operator() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field="age", value={"$unknown": 30})
-    assert "Invalid operator" in str(exc_info.value)
-
-
-@pytest.mark.parametrize("operator", LOGICAL_OPERATORS)
-def test_handle_field_filter_logical_operators(operator: str) -> None:
-    with pytest.raises(NotImplementedError):
-        _handle_field_filter(field="age", value={operator: {"$gt": 30, "$lt": 40}})
-
-
-def test_handle_field_filter_nin_operator() -> None:
-    field = "description"
-    value = ["sandworm", "spice"]
-    string, params = _handle_field_filter(field, {"$nin": value}, param_number=1)
-    expected_string = "n.`description` NOT IN $param_1"
-    expected_params = {"param_1": value}
-    assert string == expected_string
-    assert params == expected_params
-
-
-def test_handle_field_filter_like_operator() -> None:
-    field = "description"
-    value = "spice%"
-    string, params = _handle_field_filter(field, {"$like": value}, param_number=2)
-    expected_string = "n.`description` CONTAINS $param_2"
-    expected_params = {"param_2": "spice"}
-    assert string == expected_string
-    assert params == expected_params
-
-
-def test_handle_field_filter_ilike_operator() -> None:
-    field = "description"
-    value = "spice%"
-    string, params = _handle_field_filter(field, {"$ilike": value}, param_number=3)
-    expected_string = "toLower(n.`description`) CONTAINS $param_3"
-    expected_params = {"param_3": "spice"}
-    assert string == expected_string
-    assert params == expected_params
-
-
-def test_handle_field_filter_in_operator_with_unsupported_types() -> None:
-    field = "tags"
-    value = {"$in": ["spice", {"unsupported": "type"}]}
-    with pytest.raises(NotImplementedError) as exc_info:
-        _handle_field_filter(field, value, param_number=1)
-    assert "Unsupported type" in str(exc_info.value)
-
-
-def test_handle_field_filter_nin_operator_with_unsupported_types() -> None:
-    field = "tags"
-    value = {"$nin": ["spice", {"unsupported": "type"}]}
-    with pytest.raises(NotImplementedError) as exc_info:
-        _handle_field_filter(field, value, param_number=2)
-    assert "Unsupported type" in str(exc_info.value)
-
-
-def test_construct_metadata_filter_invalid_top_level_operator() -> None:
-    filter_dict = {"$invalid": "value"}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert "Expected $and or $or but got: $invalid" in str(exc_info.value)
-
-
-def test_construct_metadata_filter_logical_operator_with_non_list() -> None:
-    filter_dict = {"$and": {"id": 1}}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert "Expected a list" in str(exc_info.value)
-
-
-def test_construct_metadata_filter_logical_operator_with_empty_list_and_operator() -> (
-    None
-):
-    filter_dict: dict = {"$and": []}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert (
-        "Invalid filter condition. Expected a dictionary but got an empty dictionary"
-        in str(exc_info.value)
-    )
-
-
-def test_construct_metadata_filter_logical_operator_with_empty_list_or_operator() -> (
-    None
-):
-    filter_dict: dict = {"$or": []}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert (
-        "Invalid filter condition. Expected a dictionary but got an empty dictionary"
-        in str(exc_info.value)
-    )
-
-
-def test_construct_metadata_filter_multiple_keys_with_operator() -> None:
-    filter_dict = {"id": 1, "$and": [{"name": "foo"}]}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert "Expected a field but got: $and" in str(exc_info.value)
-
-
-def test_construct_metadata_filter_empty_filter() -> None:
-    filter_dict: dict = {}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert "Got an empty dictionary for filters." in str(exc_info.value)
-
-
-def test_construct_metadata_filter_happy_case() -> None:
-    filter_dict = {"height": {"$gt": 5.0}}
-    string, params = construct_metadata_filter(filter_dict)
-
-    expected_string = "n.`height` > $param_1"
-    expected_params = {"param_1": 5.0}
-
-    assert string == expected_string
-    assert params == expected_params
-
-
-def test_construct_metadata_filter_logical_operator_empty_collect_params() -> None:
-    filter_dict = {"id": 1, "name": "foo"}
-    with patch(
-        "langchain_neo4j.vectorstores.neo4j_vector.collect_params",
-        return_value=([], {}),
-    ):
-        with pytest.raises(ValueError) as exc_info:
-            construct_metadata_filter(filter_dict)
-    assert (
-        "Invalid filter condition. Expected a dictionary but got an empty dictionary"
-        in str(exc_info.value)
-    )
 
 
 def test_neo4jvector_invalid_distance_strategy() -> None:
