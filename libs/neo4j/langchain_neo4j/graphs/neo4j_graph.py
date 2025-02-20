@@ -278,6 +278,9 @@ class Neo4jGraph(GraphStore):
         self.structured_schema = get_structured_schema(
             driver=self._driver,
             is_enhanced=self._enhanced_schema,
+            database=self._database,
+            timeout=self.timeout,
+            sanitize=self.sanitize,
         )
         self.schema = format_schema(
             schema=self.structured_schema, is_enhanced=self._enhanced_schema
