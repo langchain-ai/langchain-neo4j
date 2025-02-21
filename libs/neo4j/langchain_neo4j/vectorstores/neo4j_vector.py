@@ -23,6 +23,10 @@ from langchain_core.utils import get_from_dict_or_env
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores.utils import maximal_marginal_relevance
 from neo4j_graphrag.filters import get_metadata_filter
+from neo4j_graphrag.indexes import (
+    retrieve_fulltext_index_info,
+    retrieve_vector_index_info,
+)
 from neo4j_graphrag.types import SearchType
 
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
@@ -125,13 +129,6 @@ def check_if_not_null(props: List[str], values: List[Any]) -> None:
     for prop, value in zip(props, values):
         if not value:
             raise ValueError(f"Parameter `{prop}` must not be None or empty string")
-
-
-def sort_by_index_name(
-    lst: List[Dict[str, Any]], index_name: str
-) -> List[Dict[str, Any]]:
-    """Sort first element to match the index_name if exists"""
-    return sorted(lst, key=lambda x: x.get("name") != index_name)
 
 
 def remove_lucene_chars(text: str) -> str:
@@ -480,33 +477,26 @@ class Neo4jVector(VectorStore):
         Returns:
             int or None: The embedding dimension of the existing index if found.
         """
-
-        index_information = self.query(
-            "SHOW INDEXES YIELD name, type, entityType, labelsOrTypes, "
-            "properties, options WHERE type = 'VECTOR' AND (name = $index_name "
-            "OR (labelsOrTypes[0] = $node_label AND "
-            "properties[0] = $embedding_node_property)) "
-            "RETURN name, entityType, labelsOrTypes, properties, options ",
-            params={
-                "index_name": self.index_name,
-                "node_label": self.node_label,
-                "embedding_node_property": self.embedding_node_property,
-            },
+        index_information = retrieve_vector_index_info(
+            driver=self._driver,
+            index_name=self.index_name,
+            label_or_type=self.node_label,
+            embedding_property=self.embedding_node_property,
         )
-        # sort by index_name
-        index_information = sort_by_index_name(index_information, self.index_name)
-        try:
-            self.index_name = index_information[0]["name"]
-            self.node_label = index_information[0]["labelsOrTypes"][0]
-            self.embedding_node_property = index_information[0]["properties"][0]
-            self._index_type = index_information[0]["entityType"]
-            embedding_dimension = None
-            index_config = index_information[0]["options"]["indexConfig"]
-            if "vector.dimensions" in index_config:
-                embedding_dimension = index_config["vector.dimensions"]
-
-            return embedding_dimension, index_information[0]["entityType"]
-        except IndexError:
+        if index_information:
+            try:
+                self.index_name = index_information["name"]
+                self.node_label = index_information["labelsOrTypes"][0]
+                self.embedding_node_property = index_information["properties"][0]
+                self._index_type = index_information["entityType"]
+                embedding_dimension = None
+                index_config = index_information["options"]["indexConfig"]
+                if "vector.dimensions" in index_config:
+                    embedding_dimension = index_config["vector.dimensions"]
+                return embedding_dimension, index_information["entityType"]
+            except IndexError:
+                return None, None
+        else:
             return None, None
 
     def retrieve_existing_fts_index(
@@ -521,27 +511,21 @@ class Neo4jVector(VectorStore):
         Returns:
             (Tuple): keyword index information
         """
-
-        index_information = self.query(
-            "SHOW INDEXES YIELD name, type, labelsOrTypes, properties, options "
-            "WHERE type = 'FULLTEXT' AND (name = $keyword_index_name "
-            "OR (labelsOrTypes = [$node_label] AND "
-            "properties = $text_node_property)) "
-            "RETURN name, labelsOrTypes, properties, options ",
-            params={
-                "keyword_index_name": self.keyword_index_name,
-                "node_label": self.node_label,
-                "text_node_property": text_node_properties or [self.text_node_property],
-            },
+        index_information = retrieve_fulltext_index_info(
+            driver=self._driver,
+            index_name=self.keyword_index_name,
+            label_or_type=self.node_label,
+            text_properties=text_node_properties or [self.text_node_property],
         )
-        # sort by index_name
-        index_information = sort_by_index_name(index_information, self.index_name)
-        try:
-            self.keyword_index_name = index_information[0]["name"]
-            self.text_node_property = index_information[0]["properties"][0]
-            node_label = index_information[0]["labelsOrTypes"][0]
-            return node_label
-        except IndexError:
+        if index_information:
+            try:
+                self.keyword_index_name = index_information["name"]
+                self.text_node_property = index_information["properties"][0]
+                node_label = index_information["labelsOrTypes"][0]
+                return node_label
+            except IndexError:
+                return None
+        else:
             return None
 
     def create_new_index(self) -> None:
