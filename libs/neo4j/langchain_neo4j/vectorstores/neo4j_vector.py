@@ -8,8 +8,10 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Final,
     Iterable,
     List,
+    Literal,
     Optional,
     Tuple,
     Type,
@@ -24,6 +26,8 @@ from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores.utils import maximal_marginal_relevance
 from neo4j_graphrag.filters import get_metadata_filter
 from neo4j_graphrag.indexes import (
+    create_fulltext_index,
+    create_vector_index,
     retrieve_fulltext_index_info,
     retrieve_vector_index_info,
 )
@@ -33,7 +37,7 @@ from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
 from langchain_neo4j.vectorstores.utils import DistanceStrategy
 
 DEFAULT_DISTANCE_STRATEGY = DistanceStrategy.COSINE
-DISTANCE_MAPPING = {
+DISTANCE_MAPPING: Final[dict[DistanceStrategy, Literal["euclidean", "cosine"]]] = {
     DistanceStrategy.EUCLIDEAN_DISTANCE: "euclidean",
     DistanceStrategy.COSINE: "cosine",
 }
@@ -519,10 +523,7 @@ class Neo4jVector(VectorStore):
                 text_properties=text_node_properties or [self.text_node_property],
             )
         else:
-            raise ValueError(
-                "keyword_index_name is not set. "
-                "Please set it to the name of the fulltext index."
-            )
+            raise ValueError("keyword_index_name is not set.")
         if index_information:
             try:
                 self.keyword_index_name = index_information["name"]
@@ -539,32 +540,34 @@ class Neo4jVector(VectorStore):
         This method constructs a Cypher query and executes it
         to create a new vector index in Neo4j.
         """
-        index_query = (
-            f"CREATE VECTOR INDEX {self.index_name} IF NOT EXISTS "
-            f"FOR (m:`{self.node_label}`) ON m.`{self.embedding_node_property}` "
-            "OPTIONS { indexConfig: { "
-            "`vector.dimensions`: toInteger($embedding_dimension), "
-            "`vector.similarity_function`: $similarity_metric }}"
+        similarity_fn = DISTANCE_MAPPING[self._distance_strategy]
+        create_vector_index(
+            driver=self._driver,
+            name=self.index_name,
+            label=self.node_label,
+            embedding_property=self.embedding_node_property,
+            dimensions=self.embedding_dimension,
+            similarity_fn=similarity_fn,
+            fail_if_exists=False,
+            neo4j_database=self._database,
         )
-
-        parameters = {
-            "embedding_dimension": self.embedding_dimension,
-            "similarity_metric": DISTANCE_MAPPING[self._distance_strategy],
-        }
-        self.query(index_query, params=parameters)
 
     def create_new_keyword_index(self, text_node_properties: List[str] = []) -> None:
         """
         This method constructs a Cypher query and executes it
         to create a new full text index in Neo4j.
         """
-        node_props = text_node_properties or [self.text_node_property]
-        fts_index_query = (
-            f"CREATE FULLTEXT INDEX {self.keyword_index_name} "
-            f"FOR (n:`{self.node_label}`) ON EACH "
-            f"[{', '.join(['n.`' + el + '`' for el in node_props])}]"
-        )
-        self.query(fts_index_query)
+        if self.keyword_index_name:
+            create_fulltext_index(
+                driver=self._driver,
+                name=self.keyword_index_name,
+                label=self.node_label,
+                node_properties=text_node_properties or [self.text_node_property],
+                fail_if_exists=False,
+                neo4j_database=self._database,
+            )
+        else:
+            raise ValueError("keyword_index_name is not set.")
 
     @property
     def embeddings(self) -> Embeddings:
