@@ -23,13 +23,13 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.utils import get_from_dict_or_env
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores.utils import maximal_marginal_relevance
-from neo4j_graphrag.filters import get_metadata_filter
 from neo4j_graphrag.indexes import (
     create_fulltext_index,
     create_vector_index,
     retrieve_fulltext_index_info,
     retrieve_vector_index_info,
 )
+from neo4j_graphrag.neo4j_queries import get_search_query
 from neo4j_graphrag.types import EntityType, SearchType
 
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
@@ -830,45 +830,11 @@ class Neo4jVector(VectorStore):
             List[Tuple[Document, float]]: A list of tuples, each containing
                                 a Document object and its similarity score.
         """
-        if filter:
-            # Verify that 5.18 or later is used
-            if not self.support_metadata_filter:
-                raise ValueError(
-                    "Metadata filtering is only supported in "
-                    "Neo4j version 5.18 or greater"
-                )
-            # Metadata filtering and hybrid doesn't work
-            if self.search_type == SearchType.HYBRID:
-                raise ValueError(
-                    "Metadata filtering can't be use in combination with "
-                    "a hybrid search approach"
-                )
-            parallel_query = (
-                "CYPHER runtime = parallel parallelRuntimeSupport=all "
-                if self._is_enterprise
-                else ""
+        if filter and not self.support_metadata_filter:
+            raise ValueError(
+                "Metadata filtering is only supported in "
+                "Neo4j version 5.18 or greater"
             )
-            base_index_query = parallel_query + (
-                f"MATCH (n:`{self.node_label}`) WHERE "
-                f"n.`{self.embedding_node_property}` IS NOT NULL AND "
-                f"size(n.`{self.embedding_node_property}`) = "
-                f"toInteger({self.embedding_dimension}) AND "
-            )
-            base_cosine_query = (
-                " WITH n as node, vector.similarity.cosine("
-                f"n.`{self.embedding_node_property}`, "
-                "$embedding) AS score ORDER BY score DESC LIMIT toInteger($k) "
-            )
-            filter_snippets, filter_params = get_metadata_filter(
-                filter=filter, node_alias="n"
-            )
-            index_query = base_index_query + filter_snippets + base_cosine_query
-
-        else:
-            index_query = _get_search_index_query(
-                self.search_type, self._index_type, self.neo4j_version_is_5_23_or_above
-            )
-            filter_params = {}
 
         if self._index_type == EntityType.RELATIONSHIP:
             if kwargs.get("return_embeddings"):
@@ -900,19 +866,28 @@ class Neo4jVector(VectorStore):
                     f"node {{.*, `{self.text_node_property}`: Null, "
                     f"`{self.embedding_node_property}`: Null, id: Null }} AS metadata"
                 )
-
         retrieval_query = (
             self.retrieval_query if self.retrieval_query else default_retrieval
         )
 
-        read_query = index_query + retrieval_query
+        read_query, filter_params = get_search_query(
+            search_type=self.search_type,
+            entity_type=self._index_type,
+            retrieval_query=retrieval_query,
+            node_label=self.node_label,
+            embedding_node_property=self.embedding_node_property,
+            embedding_dimension=self.embedding_dimension,
+            filters=filter,
+            neo4j_version_is_5_23_or_above=self.neo4j_version_is_5_23_or_above,
+            use_parallel_runtime=self._is_enterprise,
+        )
         parameters = {
-            "index": self.index_name,
-            "k": k,
-            "embedding": embedding,
-            "keyword_index": self.keyword_index_name,
-            "query": remove_lucene_chars(kwargs["query"]),
-            "ef": effective_search_ratio,
+            "vector_index_name": self.index_name,
+            "top_k": k,
+            "query_vector": embedding,
+            "fulltext_index_name": self.keyword_index_name,
+            "query_text": remove_lucene_chars(kwargs["query"]),
+            "effective_search_ratio": effective_search_ratio,
             **params,
             **filter_params,
         }

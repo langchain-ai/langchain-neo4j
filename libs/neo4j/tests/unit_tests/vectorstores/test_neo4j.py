@@ -564,15 +564,12 @@ def test_similarity_search_by_vector_metadata_filter_hybrid(
     vector_store.search_type = SearchType.HYBRID
     vector_store.embedding_dimension = 64
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         vector_store.similarity_search_by_vector(
             embedding=[0] * 64,
             filter={"field": "value"},
         )
-    assert (
-        "Metadata filtering can't be use in combination with a hybrid search approach"
-        in str(exc_info.value)
-    )
+    assert "Filters are not supported with hybrid search" in str(exc_info.value)
 
 
 def test_from_existing_index_relationship_index_error(
