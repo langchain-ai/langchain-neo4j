@@ -5,14 +5,12 @@ from typing import Any, Dict, List, cast
 
 import pytest
 from langchain_core.documents import Document
+from neo4j_graphrag.neo4j_queries import _get_hybrid_query
 from neo4j_graphrag.types import SearchType
 from yaml import safe_load
 
 from langchain_neo4j import Neo4jGraph
-from langchain_neo4j.vectorstores.neo4j_vector import (
-    Neo4jVector,
-    _get_search_index_query,
-)
+from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 from langchain_neo4j.vectorstores.utils import DistanceStrategy
 from tests.integration_tests.utils import Neo4jCredentials
 from tests.integration_tests.vectorstores.fake_embeddings import (
@@ -661,8 +659,8 @@ def test_hybrid_score_normalization(neo4j_credentials: Neo4jCredentials) -> None
     )
     # Remove deduplication part of the query
     rrf_query = (
-        _get_search_index_query(SearchType.HYBRID)
-        .rstrip("WITH node, max(score) AS score ORDER BY score DESC LIMIT $k")
+        _get_hybrid_query(neo4j_version_is_5_23_or_above=False)
+        .rstrip("WITH node, max(score) AS score ORDER BY score DESC LIMIT $top_k")
         .replace("UNION", "UNION ALL")
         + "RETURN node.text AS text, score LIMIT 2"
     )
@@ -670,12 +668,12 @@ def test_hybrid_score_normalization(neo4j_credentials: Neo4jCredentials) -> None
     output = docsearch.query(
         rrf_query,
         params={
-            "index": "vector",
-            "k": 1,
-            "embedding": FakeEmbeddingsWithOsDimension().embed_query("foo"),
-            "ef": 1,
-            "query": "foo",
-            "keyword_index": "keyword",
+            "vector_index_name": "vector",
+            "top_k": 1,
+            "query_vector": FakeEmbeddingsWithOsDimension().embed_query("foo"),
+            "effective_search_ratio": 1,
+            "query_text": "foo",
+            "fulltext_index_name": "keyword",
         },
     )
     # Both FT and Vector must return 1.0 score

@@ -76,50 +76,6 @@ DEFAULT_SEARCH_TYPE = SearchType.VECTOR
 DEFAULT_ENTITY_TYPE = EntityType.NODE
 
 
-def _get_search_index_query(
-    search_type: SearchType,
-    index_type: EntityType = DEFAULT_ENTITY_TYPE,
-    neo4j_version_is_5_23_or_above: bool = False,
-) -> str:
-    if index_type == EntityType.NODE:
-        if search_type == SearchType.VECTOR:
-            return (
-                "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
-                "YIELD node, score "
-                "WITH node, score LIMIT $k "
-            )
-        elif search_type == SearchType.HYBRID:
-            call_prefix = "CALL () { " if neo4j_version_is_5_23_or_above else "CALL { "
-
-            query_body = (
-                "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
-                "YIELD node, score "
-                "WITH node, score LIMIT $k "
-                "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-                "UNWIND nodes AS n "
-                "RETURN n.node AS node, (n.score / max) AS score UNION "
-                "CALL db.index.fulltext.queryNodes($keyword_index, $query, "
-                "{limit: $k}) YIELD node, score "
-                "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-                "UNWIND nodes AS n "
-                "RETURN n.node AS node, (n.score / max) AS score "
-            )
-
-            call_suffix = (
-                "} WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
-            )
-
-            return call_prefix + query_body + call_suffix
-        else:
-            raise ValueError(f"Unsupported SearchType: {search_type}")
-    else:
-        return (
-            "CALL db.index.vector.queryRelationships($index, $k * $ef, $embedding) "
-            "YIELD relationship, score "
-            "WITH relationship, score LIMIT $k "
-        )
-
-
 def check_if_not_null(props: List[str], values: List[Any]) -> None:
     """Check if the values are not None or empty string"""
     for prop, value in zip(props, values):

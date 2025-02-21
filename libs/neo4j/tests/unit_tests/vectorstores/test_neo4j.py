@@ -5,11 +5,10 @@ from unittest.mock import MagicMock, patch
 
 import neo4j
 import pytest
-from neo4j_graphrag.types import EntityType, SearchType
+from neo4j_graphrag.types import SearchType
 
 from langchain_neo4j.vectorstores.neo4j_vector import (
     Neo4jVector,
-    _get_search_index_query,
     check_if_not_null,
     dict_to_yaml_str,
     remove_lucene_chars,
@@ -235,52 +234,6 @@ def test_converting_to_yaml() -> None:
     assert yaml_str == expected_output
 
 
-def test_get_search_index_query_hybrid_node_neo4j_5_23_above() -> None:
-    expected_query = (
-        "CALL () { "
-        "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
-        "YIELD node, score "
-        "WITH node, score LIMIT $k "
-        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-        "UNWIND nodes AS n "
-        "RETURN n.node AS node, (n.score / max) AS score UNION "
-        "CALL db.index.fulltext.queryNodes($keyword_index, $query, "
-        "{limit: $k}) YIELD node, score "
-        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-        "UNWIND nodes AS n "
-        "RETURN n.node AS node, (n.score / max) AS score "
-        "} "
-        "WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
-    )
-
-    actual_query = _get_search_index_query(SearchType.HYBRID, EntityType.NODE, True)
-
-    assert actual_query == expected_query
-
-
-def test_get_search_index_query_hybrid_node_neo4j_5_23_below() -> None:
-    expected_query = (
-        "CALL { "
-        "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
-        "YIELD node, score "
-        "WITH node, score LIMIT $k "
-        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-        "UNWIND nodes AS n "
-        "RETURN n.node AS node, (n.score / max) AS score UNION "
-        "CALL db.index.fulltext.queryNodes($keyword_index, $query, "
-        "{limit: $k}) YIELD node, score "
-        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-        "UNWIND nodes AS n "
-        "RETURN n.node AS node, (n.score / max) AS score "
-        "} "
-        "WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
-    )
-
-    actual_query = _get_search_index_query(SearchType.HYBRID, EntityType.NODE, False)
-
-    assert actual_query == expected_query
-
-
 def test_build_import_query_version_is_or_above_5_23(
     mock_vector_store: Neo4jVector,
 ) -> None:
@@ -349,18 +302,6 @@ def test_build_delete_query_version_below_5_23(mock_vector_store: Neo4jVector) -
     actual_query = mock_vector_store._build_delete_query()
 
     assert actual_query == expected_query
-
-
-def test_get_search_index_query_invalid_search_type() -> None:
-    invalid_search_type = "INVALID_TYPE"
-
-    with pytest.raises(ValueError) as exc_info:
-        _get_search_index_query(
-            search_type=invalid_search_type,  # type: ignore[arg-type]
-            index_type=EntityType.NODE,
-        )
-
-    assert "Unsupported SearchType" in str(exc_info.value)
 
 
 def test_check_if_not_null_happy_case() -> None:
