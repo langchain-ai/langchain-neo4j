@@ -1,3 +1,4 @@
+import re
 from hashlib import md5
 from typing import Any, Dict, List, Optional, Type
 
@@ -161,6 +162,8 @@ def _get_rel_import_query(baseEntityLabel: bool) -> str:
 def _format_schema(schema: Dict, is_enhanced: bool) -> str:
     formatted_node_props = []
     formatted_rel_props = []
+    formatted_indexes = []
+    schema_metadata = schema.get('metadata')
     if is_enhanced:
         # Enhanced formatting for nodes
         for node_type, properties in schema["node_props"].items():
@@ -263,17 +266,24 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
             formatted_node_props.append(f"{label} {{{props_str}}}")
 
         # Format relationship properties using structured_schema
-        for type, props in schema["rel_props"].items():
+        for rel_type, props in schema["rel_props"].items():
             props_str = ", ".join(
                 [f"{prop['property']}: {prop['type']}" for prop in props]
             )
-            formatted_rel_props.append(f"{type} {{{props_str}}}")
+            formatted_rel_props.append(f"{rel_type} {{{props_str}}}")
 
     # Format relationships
     formatted_rels = [
         f"(:{el['start']})-[:{el['type']}]->(:{el['end']})"
         for el in schema["relationships"]
     ]
+
+    # Format indexes
+    for index in schema_metadata["index"]:
+        props_str = []
+        for k, v in index.items():
+            props_str.append(f"{k}: {v if type(v) != list else ', '.join(v)}")
+        formatted_indexes.append(f"{{{', '.join(props_str)}}})")
 
     return "\n".join(
         [
@@ -283,12 +293,29 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
             "\n".join(formatted_rel_props),
             "The relationships:",
             "\n".join(formatted_rels),
+            "The indexes:",
+            "\n".join(formatted_indexes),
         ]
     )
 
 
 def _remove_backticks(text: str) -> str:
     return text.replace("`", "")
+
+
+def _extract_index_name(index_name: str) -> str:
+    pattern = re.compile(r"name='([^']+)'")
+    match = pattern.search(index_name)
+    if match:
+        return match.group(1)
+    return index_name
+
+
+def _set_index_names(index_list: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    for index in index_list:
+        desc = index.pop('userDescription')
+        index['index_name'] = _extract_index_name(desc)
+    return index_list
 
 
 class Neo4jGraph(GraphStore):
@@ -528,7 +555,7 @@ class Neo4jGraph(GraphStore):
         try:
             constraint = self.query("SHOW CONSTRAINTS")
             index = self.query(
-                "CALL apoc.schema.nodes() YIELD label, properties, type, size, "
+                "CALL apoc.schema.nodes() YIELD label, properties, type, size, userDescription, "
                 "valuesSelectivity WHERE type IN ['RANGE', 'VECTOR'] RETURN *, "
                 "size * valuesSelectivity as distinctValues"
             )
@@ -542,7 +569,7 @@ class Neo4jGraph(GraphStore):
             "node_props": {el["labels"]: el["properties"] for el in node_properties},
             "rel_props": {el["type"]: el["properties"] for el in rel_properties},
             "relationships": relationships,
-            "metadata": {"constraint": constraint, "index": index},
+            "metadata": {"constraint": constraint, "index": _set_index_names(index)},
         }
         if self._enhanced_schema:
             schema_counts = self.query(
@@ -602,9 +629,7 @@ class Neo4jGraph(GraphStore):
                 # Due to schema-flexible nature of neo4j errors can happen
                 except CypherTypeError:
                     continue
-
         schema = _format_schema(self.structured_schema, self._enhanced_schema)
-
         self.schema = schema
 
     def add_graph_documents(
