@@ -40,39 +40,7 @@ DISTANCE_MAPPING: Final[dict[DistanceStrategy, Literal["euclidean", "cosine"]]] 
     DistanceStrategy.EUCLIDEAN_DISTANCE: "euclidean",
     DistanceStrategy.COSINE: "cosine",
 }
-
-COMPARISONS_TO_NATIVE = {
-    "$eq": "=",
-    "$ne": "<>",
-    "$lt": "<",
-    "$lte": "<=",
-    "$gt": ">",
-    "$gte": ">=",
-}
-
-SPECIAL_CASED_OPERATORS = {
-    "$in",
-    "$nin",
-    "$between",
-}
-
-TEXT_OPERATORS = {
-    "$like",
-    "$ilike",
-}
-
-LOGICAL_OPERATORS = {"$and", "$or"}
-
-SUPPORTED_OPERATORS = (
-    set(COMPARISONS_TO_NATIVE)
-    .union(TEXT_OPERATORS)
-    .union(LOGICAL_OPERATORS)
-    .union(SPECIAL_CASED_OPERATORS)
-)
-
 DEFAULT_SEARCH_TYPE = SearchType.VECTOR
-
-
 DEFAULT_ENTITY_TYPE = EntityType.NODE
 
 
@@ -309,18 +277,14 @@ class Neo4jVector(VectorStore):
 
     def _build_delete_query(self) -> str:
         if self.neo4j_version_is_5_23_or_above:
-            query = (
-                f"MATCH (n:`{self.node_label}`) "
-                "CALL (n) { DETACH DELETE n } "
-                "IN TRANSACTIONS OF 10000 ROWS;"
-            )
+            call_prefix = "CALL (n) {"
         else:
-            query = (
-                f"MATCH (n:`{self.node_label}`) "
-                "CALL { WITH n DETACH DELETE n } "
-                "IN TRANSACTIONS OF 10000 ROWS;"
-            )
-        return query
+            call_prefix = "CALL { WITH n"
+        return (
+            f"MATCH (n:`{self.node_label}`) "
+            f"{call_prefix} DETACH DELETE n "
+            "} IN TRANSACTIONS OF 10000 ROWS;"
+        )
 
     def query(
         self,
