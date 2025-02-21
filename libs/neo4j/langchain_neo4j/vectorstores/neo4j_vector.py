@@ -835,37 +835,21 @@ class Neo4jVector(VectorStore):
                 "Metadata filtering is only supported in "
                 "Neo4j version 5.18 or greater"
             )
-
-        if self._index_type == EntityType.RELATIONSHIP:
-            if kwargs.get("return_embeddings"):
-                default_retrieval = (
-                    f"RETURN relationship.`{self.text_node_property}` AS text, score, "
-                    f"relationship {{.*, `{self.text_node_property}`: Null, "
-                    f"`{self.embedding_node_property}`: Null, id: Null, "
-                    f"_embedding_: relationship.`{self.embedding_node_property}`}} "
-                    "AS metadata"
-                )
-            else:
-                default_retrieval = (
-                    f"RETURN relationship.`{self.text_node_property}` AS text, score, "
-                    f"relationship {{.*, `{self.text_node_property}`: Null, "
-                    f"`{self.embedding_node_property}`: Null, id: Null }} AS metadata"
-                )
-
-        else:
-            if kwargs.get("return_embeddings"):
-                default_retrieval = (
-                    f"RETURN node.`{self.text_node_property}` AS text, score, "
-                    f"node {{.*, `{self.text_node_property}`: Null, "
-                    f"`{self.embedding_node_property}`: Null, id: Null, "
-                    f"_embedding_: node.`{self.embedding_node_property}`}} AS metadata"
-                )
-            else:
-                default_retrieval = (
-                    f"RETURN node.`{self.text_node_property}` AS text, score, "
-                    f"node {{.*, `{self.text_node_property}`: Null, "
-                    f"`{self.embedding_node_property}`: Null, id: Null }} AS metadata"
-                )
+        entity_prefix = (
+            "relationship" if self._index_type == EntityType.RELATIONSHIP else "node"
+        )
+        default_retrieval = (
+            f"RETURN {entity_prefix}.`{self.text_node_property}` AS text, score, "
+            f"{entity_prefix} "
+            "{.*, "
+            f"`{self.text_node_property}`: Null, "
+            f"`{self.embedding_node_property}`: Null, id: Null "
+        )
+        if kwargs.get("return_embeddings"):
+            default_retrieval += (
+                f", _embedding_: {entity_prefix}.`{self.embedding_node_property}` "
+            )
+        default_retrieval += "} AS metadata"
         retrieval_query = (
             self.retrieval_query if self.retrieval_query else default_retrieval
         )
