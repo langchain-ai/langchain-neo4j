@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import enum
 import logging
 import os
 from hashlib import md5
@@ -31,7 +30,7 @@ from neo4j_graphrag.indexes import (
     retrieve_fulltext_index_info,
     retrieve_vector_index_info,
 )
-from neo4j_graphrag.types import SearchType
+from neo4j_graphrag.types import EntityType, SearchType
 
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
 from langchain_neo4j.vectorstores.utils import DistanceStrategy
@@ -74,22 +73,15 @@ SUPPORTED_OPERATORS = (
 DEFAULT_SEARCH_TYPE = SearchType.VECTOR
 
 
-class IndexType(str, enum.Enum):
-    """Enumerator of the index types."""
-
-    NODE = "NODE"
-    RELATIONSHIP = "RELATIONSHIP"
-
-
-DEFAULT_INDEX_TYPE = IndexType.NODE
+DEFAULT_ENTITY_TYPE = EntityType.NODE
 
 
 def _get_search_index_query(
     search_type: SearchType,
-    index_type: IndexType = DEFAULT_INDEX_TYPE,
+    index_type: EntityType = DEFAULT_ENTITY_TYPE,
     neo4j_version_is_5_23_or_above: bool = False,
 ) -> str:
-    if index_type == IndexType.NODE:
+    if index_type == EntityType.NODE:
         if search_type == SearchType.VECTOR:
             return (
                 "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
@@ -262,7 +254,7 @@ class Neo4jVector(VectorStore):
         pre_delete_collection: bool = False,
         retrieval_query: str = "",
         relevance_score_fn: Optional[Callable[[float], float]] = None,
-        index_type: IndexType = DEFAULT_INDEX_TYPE,
+        index_type: EntityType = DEFAULT_ENTITY_TYPE,
         graph: Optional[Neo4jGraph] = None,
         embedding_dimension: Optional[int] = None,
     ) -> None:
@@ -878,7 +870,7 @@ class Neo4jVector(VectorStore):
             )
             filter_params = {}
 
-        if self._index_type == IndexType.RELATIONSHIP:
+        if self._index_type == EntityType.RELATIONSHIP:
             if kwargs.get("return_embeddings"):
                 default_retrieval = (
                     f"RETURN relationship.`{self.text_node_property}` AS text, score, "

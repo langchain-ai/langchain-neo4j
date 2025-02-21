@@ -5,10 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import neo4j
 import pytest
-from neo4j_graphrag.types import SearchType
+from neo4j_graphrag.types import EntityType, SearchType
 
 from langchain_neo4j.vectorstores.neo4j_vector import (
-    IndexType,
     Neo4jVector,
     _get_search_index_query,
     check_if_not_null,
@@ -254,7 +253,7 @@ def test_get_search_index_query_hybrid_node_neo4j_5_23_above() -> None:
         "WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
     )
 
-    actual_query = _get_search_index_query(SearchType.HYBRID, IndexType.NODE, True)
+    actual_query = _get_search_index_query(SearchType.HYBRID, EntityType.NODE, True)
 
     assert actual_query == expected_query
 
@@ -277,7 +276,7 @@ def test_get_search_index_query_hybrid_node_neo4j_5_23_below() -> None:
         "WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
     )
 
-    actual_query = _get_search_index_query(SearchType.HYBRID, IndexType.NODE, False)
+    actual_query = _get_search_index_query(SearchType.HYBRID, EntityType.NODE, False)
 
     assert actual_query == expected_query
 
@@ -358,7 +357,7 @@ def test_get_search_index_query_invalid_search_type() -> None:
     with pytest.raises(ValueError) as exc_info:
         _get_search_index_query(
             search_type=invalid_search_type,  # type: ignore[arg-type]
-            index_type=IndexType.NODE,
+            index_type=EntityType.NODE,
         )
 
     assert "Unsupported SearchType" in str(exc_info.value)
