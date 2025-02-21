@@ -511,12 +511,18 @@ class Neo4jVector(VectorStore):
         Returns:
             (Tuple): keyword index information
         """
-        index_information = retrieve_fulltext_index_info(
-            driver=self._driver,
-            index_name=self.keyword_index_name,
-            label_or_type=self.node_label,
-            text_properties=text_node_properties or [self.text_node_property],
-        )
+        if self.keyword_index_name:
+            index_information = retrieve_fulltext_index_info(
+                driver=self._driver,
+                index_name=self.keyword_index_name,
+                label_or_type=self.node_label,
+                text_properties=text_node_properties or [self.text_node_property],
+            )
+        else:
+            raise ValueError(
+                "keyword_index_name is not set. "
+                "Please set it to the name of the fulltext index."
+            )
         if index_information:
             try:
                 self.keyword_index_name = index_information["name"]
