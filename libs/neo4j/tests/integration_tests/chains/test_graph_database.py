@@ -202,10 +202,11 @@ def test_exclude_types(neo4j_credentials: Neo4jCredentials) -> None:
         allow_dangerous_requests=True,
     )
     expected_schema = (
-        "Node properties are the following:\n"
-        "Actor {name: STRING},Movie {title: STRING}\n"
-        "Relationship properties are the following:\n\n"
-        "The relationships are the following:\n"
+        "Node properties:\n"
+        "Actor {name: STRING}\n"
+        "Movie {title: STRING}\n"
+        "Relationship properties:\n\n"
+        "The relationships:\n"
         "(:Actor)-[:ACTED_IN]->(:Movie)"
     )
     assert chain.graph_schema == expected_schema
@@ -234,10 +235,11 @@ def test_include_types(neo4j_credentials: Neo4jCredentials) -> None:
         allow_dangerous_requests=True,
     )
     expected_schema = (
-        "Node properties are the following:\n"
-        "Actor {name: STRING},Movie {title: STRING}\n"
-        "Relationship properties are the following:\n\n"
-        "The relationships are the following:\n"
+        "Node properties:\n"
+        "Actor {name: STRING}\n"
+        "Movie {title: STRING}\n"
+        "Relationship properties:\n\n"
+        "The relationships:\n"
         "(:Actor)-[:ACTED_IN]->(:Movie)"
     )
 
@@ -267,9 +269,9 @@ def test_include_types2(neo4j_credentials: Neo4jCredentials) -> None:
         allow_dangerous_requests=True,
     )
     expected_schema = (
-        "Node properties are the following:\n"
+        "Node properties:\n"
         "Movie {title: STRING}\n"
-        "Relationship properties are the following:\n\n"
-        "The relationships are the following:\n"
+        "Relationship properties:\n\n"
+        "The relationships:\n"
     )
     assert chain.graph_schema == expected_schema
