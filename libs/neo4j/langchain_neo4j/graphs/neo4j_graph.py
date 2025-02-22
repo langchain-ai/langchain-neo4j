@@ -242,7 +242,7 @@ def _format_schema(schema: Dict, is_enhanced: bool) -> str:
                         example = f'Min: {prop["min"]}, Max: {prop["max"]}'
                     else:  # return a single value
                         example = (
-                            f'Example: "{prop["values"][0]}"' if prop["values"] else ""
+                            f'Example: "{prop["values"][0]}"' if "values" in prop else ""
                         )
                 elif prop["type"] == "LIST":
                     # Skip embeddings
