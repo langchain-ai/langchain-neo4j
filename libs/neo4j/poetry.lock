@@ -532,6 +532,45 @@ files = [
 ]
 
 [[package]]
+name = "fsspec"
+version = "2024.12.0"
+description = "File-system specification"
+optional = false
+python-versions = ">=3.8"
+files = [
+    {file = "fsspec-2024.12.0-py3-none-any.whl", hash = "sha256:b520aed47ad9804237ff878b504267a3b0b441e97508bd6d2d8774e3db85cee2"},
+    {file = "fsspec-2024.12.0.tar.gz", hash = "sha256:670700c977ed2fb51e0d9f9253177ed20cbde4a3e5c0283cc5385b5870c8533f"},
+]
+
+[package.extras]
+abfs = ["adlfs"]
+adl = ["adlfs"]
+arrow = ["pyarrow (>=1)"]
+dask = ["dask", "distributed"]
+dev = ["pre-commit", "ruff"]
+doc = ["numpydoc", "sphinx", "sphinx-design", "sphinx-rtd-theme", "yarl"]
+dropbox = ["dropbox", "dropboxdrivefs", "requests"]
+full = ["adlfs", "aiohttp (!=4.0.0a0,!=4.0.0a1)", "dask", "distributed", "dropbox", "dropboxdrivefs", "fusepy", "gcsfs", "libarchive-c", "ocifs", "panel", "paramiko", "pyarrow (>=1)", "pygit2", "requests", "s3fs", "smbprotocol", "tqdm"]
+fuse = ["fusepy"]
+gcs = ["gcsfs"]
+git = ["pygit2"]
+github = ["requests"]
+gs = ["gcsfs"]
+gui = ["panel"]
+hdfs = ["pyarrow (>=1)"]
+http = ["aiohttp (!=4.0.0a0,!=4.0.0a1)"]
+libarchive = ["libarchive-c"]
+oci = ["ocifs"]
+s3 = ["s3fs"]
+sftp = ["paramiko"]
+smb = ["smbprotocol"]
+ssh = ["paramiko"]
+test = ["aiohttp (!=4.0.0a0,!=4.0.0a1)", "numpy", "pytest", "pytest-asyncio (!=0.22.0)", "pytest-benchmark", "pytest-cov", "pytest-mock", "pytest-recording", "pytest-rerunfailures", "requests"]
+test-downstream = ["aiobotocore (>=2.5.4,<3.0.0)", "dask-expr", "dask[dataframe,test]", "moto[server] (>4,<5)", "pytest-timeout", "xarray"]
+test-full = ["adlfs", "aiohttp (!=4.0.0a0,!=4.0.0a1)", "cloudpickle", "dask", "distributed", "dropbox", "dropboxdrivefs", "fastparquet", "fusepy", "gcsfs", "jinja2", "kerchunk", "libarchive-c", "lz4", "notebook", "numpy", "ocifs", "pandas", "panel", "paramiko", "pyarrow", "pyarrow (>=1)", "pyftpdlib", "pygit2", "pytest", "pytest-asyncio (!=0.22.0)", "pytest-benchmark", "pytest-cov", "pytest-mock", "pytest-recording", "pytest-rerunfailures", "python-snappy", "requests", "smbprotocol", "tqdm", "urllib3", "zarr", "zstandard"]
+tqdm = ["tqdm"]
+
+[[package]]
 name = "greenlet"
 version = "3.1.1"
 description = "Lightweight in-process concurrent programming"
@@ -697,6 +736,17 @@ python-versions = ">=3.7"
 files = [
     {file = "iniconfig-2.0.0-py3-none-any.whl", hash = "sha256:b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"},
     {file = "iniconfig-2.0.0.tar.gz", hash = "sha256:2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3"},
+]
+
+[[package]]
+name = "json-repair"
+version = "0.30.3"
+description = "A package to repair broken json strings"
+optional = false
+python-versions = ">=3.9"
+files = [
+    {file = "json_repair-0.30.3-py3-none-any.whl", hash = "sha256:63bb588162b0958ae93d85356ecbe54c06b8c33f8a4834f93fa2719ea669804e"},
+    {file = "json_repair-0.30.3.tar.gz", hash = "sha256:0ac56e7ae9253ee9c507a7e1a3a26799c9b0bbe5e2bec1b2cc5053e90d5b05e3"},
 ]
 
 [[package]]
@@ -1000,6 +1050,40 @@ pytz = "*"
 numpy = ["numpy (>=1.7.0,<2.0.0)"]
 pandas = ["numpy (>=1.7.0,<2.0.0)", "pandas (>=1.1.0,<3.0.0)"]
 pyarrow = ["pyarrow (>=1.0.0)"]
+
+[[package]]
+name = "neo4j-graphrag"
+version = "1.5.0"
+description = "Python package to allow easy integration to Neo4j's GraphRAG features"
+optional = false
+python-versions = "<4.0.0,>=3.9.0"
+files = [
+    {file = "neo4j_graphrag-1.5.0-py3-none-any.whl", hash = "sha256:d778be8476aa758ff10043b373c287ada0abe90bcfb9c34e8cb4d2c4bbd20240"},
+    {file = "neo4j_graphrag-1.5.0.tar.gz", hash = "sha256:5367c08f128e83ca7028f2112f6e0b69541400adee40cdaf6e30c3563036acb3"},
+]
+
+[package.dependencies]
+fsspec = ">=2024.9.0,<2025.0.0"
+json-repair = ">=0.30.2,<0.31.0"
+neo4j = ">=5.17.0,<6.0.0"
+pydantic = ">=2.6.3,<3.0.0"
+pypdf = ">=4.3.1,<5.0.0"
+pyyaml = ">=6.0.2,<7.0.0"
+types-pyyaml = ">=6.0.12.20240917,<7.0.0.0"
+
+[package.extras]
+anthropic = ["anthropic (>=0.36.0,<0.37.0)"]
+cohere = ["cohere (>=5.9.0,<6.0.0)"]
+experimental = ["langchain-text-splitters (>=0.3.0,<0.4.0)", "llama-index (>=0.10.55,<0.11.0)", "pygraphviz (>=1.0.0,<2.0.0)", "pygraphviz (>=1.13.0,<2.0.0)"]
+google = ["google-cloud-aiplatform (>=1.66.0,<2.0.0)"]
+kg-creation-tools = ["pygraphviz (>=1.0.0,<2.0.0)", "pygraphviz (>=1.13.0,<2.0.0)"]
+mistralai = ["mistralai (>=1.0.3,<2.0.0)"]
+ollama = ["ollama (>=0.4.4,<0.5.0)"]
+openai = ["openai (>=1.51.1,<2.0.0)"]
+pinecone = ["pinecone-client (>=4.1.0,<5.0.0)"]
+qdrant = ["qdrant-client (>=1.11.3,<2.0.0)"]
+sentence-transformers = ["sentence-transformers (>=3.0.0,<4.0.0)"]
+weaviate = ["weaviate-client (>=4.6.1,<5.0.0)"]
 
 [[package]]
 name = "numpy"
@@ -1377,6 +1461,27 @@ files = [
 
 [package.dependencies]
 typing-extensions = ">=4.6.0,<4.7.0 || >4.7.0"
+
+[[package]]
+name = "pypdf"
+version = "4.3.1"
+description = "A pure-python PDF library capable of splitting, merging, cropping, and transforming PDF files"
+optional = false
+python-versions = ">=3.6"
+files = [
+    {file = "pypdf-4.3.1-py3-none-any.whl", hash = "sha256:64b31da97eda0771ef22edb1bfecd5deee4b72c3d1736b7df2689805076d6418"},
+    {file = "pypdf-4.3.1.tar.gz", hash = "sha256:b2f37fe9a3030aa97ca86067a56ba3f9d3565f9a791b305c7355d8392c30d91b"},
+]
+
+[package.dependencies]
+typing_extensions = {version = ">=4.0", markers = "python_version < \"3.11\""}
+
+[package.extras]
+crypto = ["PyCryptodome", "cryptography"]
+dev = ["black", "flit", "pip-tools", "pre-commit (<2.18.0)", "pytest-cov", "pytest-socket", "pytest-timeout", "pytest-xdist", "wheel"]
+docs = ["myst_parser", "sphinx", "sphinx_rtd_theme"]
+full = ["Pillow (>=8.0.0)", "PyCryptodome", "cryptography"]
+image = ["Pillow (>=8.0.0)"]
 
 [[package]]
 name = "pytest"
@@ -1912,4 +2017,4 @@ propcache = ">=0.2.0"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<4.0"
-content-hash = "5b6582f252d7d74f2fe188e34865d68cbe16bb3477f3e09a8855ad68f824597a"
+content-hash = "53e614c1b129ecde0eda90593ed6a6e62453753b257c324d0d74586e6b27ae34"
