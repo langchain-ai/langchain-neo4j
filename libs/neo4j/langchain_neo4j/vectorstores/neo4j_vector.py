@@ -31,6 +31,12 @@ from neo4j_graphrag.indexes import (
 )
 from neo4j_graphrag.neo4j_queries import get_search_query
 from neo4j_graphrag.types import EntityType, SearchType
+from neo4j_graphrag.utils.version_utils import (
+    get_version,
+    has_metadata_filtering_support,
+    has_vector_index_support,
+    is_version_5_23_or_above,
+)
 
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
 from langchain_neo4j.vectorstores.utils import DistanceStrategy
@@ -345,40 +351,18 @@ class Neo4jVector(VectorStore):
         indexing. Raises a ValueError if the connected Neo4j version is
         not supported.
         """
-        db_data = self.query("CALL dbms.components()")
-        version = db_data[0]["versions"][0]
-        if "aura" in version:
-            version_tuple = tuple(map(int, version.split("-")[0].split("."))) + (0,)
-        else:
-            version_tuple = tuple(map(int, version.split(".")))
-
-        self.neo4j_version_is_5_23_or_above = self._check_if_version_5_23_or_above(
-            version_tuple
+        version_tuple, is_aura, is_enterprise = get_version(
+            self._driver, self._database
         )
-
-        target_version = (5, 11, 0)
-
-        if version_tuple < target_version:
+        self._is_enterprise = is_enterprise
+        self.neo4j_version_is_5_23_or_above = is_version_5_23_or_above(version_tuple)
+        if not has_vector_index_support(version_tuple):
             raise ValueError(
-                "Version index is only supported in Neo4j version 5.11 or greater"
+                "Vector index is only supported in Neo4j version 5.11 or greater"
             )
-
-        # Flag for metadata filtering
-        metadata_target_version = (5, 18, 0)
-        if version_tuple < metadata_target_version:
-            self.support_metadata_filter = False
-        else:
-            self.support_metadata_filter = True
-        # Flag for enterprise
-        self._is_enterprise = True if db_data[0]["edition"] == "enterprise" else False
-
-    def _check_if_version_5_23_or_above(self, version_tuple: tuple[int, ...]) -> bool:
-        """
-        Check if the connected Neo4j database version supports the required features.
-
-        Sets a flag if the connected Neo4j version is 5.23 or above.
-        """
-        return version_tuple >= (5, 23, 0)
+        self.support_metadata_filter = has_metadata_filtering_support(
+            version_tuple, is_aura
+        )
 
     def retrieve_existing_index(self) -> Tuple[Optional[int], Optional[str]]:
         """

@@ -21,7 +21,11 @@ def mock_vector_store() -> Neo4jVector:
     mock_neo4j = MagicMock()
     mock_driver_instance = MagicMock()
     mock_driver_instance.verify_connectivity.return_value = None
-    mock_driver_instance.execute_query.return_value = ([], None, None)
+    mock_driver_instance.execute_query.return_value = (
+        [{"versions": ["5.23.0"], "edition": "enterprise"}],
+        None,
+        None,
+    )
     mock_neo4j.GraphDatabase.driver.return_value = mock_driver_instance
     mock_neo4j.exceptions.ServiceUnavailable = Exception
     mock_neo4j.exceptions.AuthError = Exception
@@ -42,11 +46,11 @@ def mock_vector_store() -> Neo4jVector:
                 password="password",
             )
 
-            vector_store.node_label = "Chunk"
-            vector_store.embedding_node_property = "embedding"
-            vector_store.text_node_property = "text"
+        vector_store.node_label = "Chunk"
+        vector_store.embedding_node_property = "embedding"
+        vector_store.text_node_property = "text"
 
-            return vector_store
+        return vector_store
 
 
 @pytest.fixture
@@ -76,17 +80,13 @@ def neo4j_vector_factory() -> Any:
         # Configure execute_query
         if query_return_value is not None:
             mock_driver_instance.execute_query.return_value = (
-                [MagicMock(data=lambda: query_return_value)],
+                [query_return_value],
                 None,
                 None,
             )
         else:
             mock_driver_instance.execute_query.return_value = (
-                [
-                    MagicMock(
-                        data=lambda: {"versions": ["5.23.0"], "edition": "enterprise"}
-                    )
-                ],
+                [{"versions": ["5.23.0"], "edition": "enterprise"}],
                 None,
                 None,
             )
@@ -144,29 +144,24 @@ def neo4j_vector_factory() -> Any:
 @pytest.mark.parametrize(
     "description, version, is_5_23_or_above",
     [
-        ("SemVer, < 5.23", "5.22.0", False),
-        ("SemVer, > 5.23", "5.24.0", True),
-        ("SemVer, < 5.23, Aura", "5.22-aura", False),
-        ("SemVer, > 5.23, Aura", "5.24-aura", True),
-        ("CalVer", "2025.01.0", True),
-        ("CalVer, Aura", "2025.01-aura", True),
+        ("SemVer, < 5.23", (5, 22, 0), False),
+        ("SemVer, >= 5.23", (5, 23, 0), True),
+        ("CalVer", (2025, 1, 0), True),
     ],
 )
+@patch("langchain_neo4j.vectorstores.neo4j_vector.get_version")
 def test_versioning_check(
+    mock_get_version: MagicMock,
     mock_vector_store: Neo4jVector,
     description: str,
-    version: str,
+    version: tuple[int, int, int],
     is_5_23_or_above: bool,
 ) -> None:
-    with patch.object(mock_vector_store, "query"):
-        assert isinstance(mock_vector_store.query, MagicMock)
-        mock_vector_store.query.return_value = [
-            {"versions": [version], "edition": "enterprise"}
-        ]
-        mock_vector_store.verify_version()
-        assert (
-            mock_vector_store.neo4j_version_is_5_23_or_above is is_5_23_or_above
-        ), f"Failed test case: {description}"
+    mock_get_version.return_value = version, False, False
+    mock_vector_store.verify_version()
+    assert (
+        mock_vector_store.neo4j_version_is_5_23_or_above is is_5_23_or_above
+    ), f"Failed test case: {description}"
 
 
 def test_escaping_lucene() -> None:
@@ -397,7 +392,7 @@ def test_neo4jvector_version_too_low(neo4j_vector_factory: Any) -> None:
     low_version_response = {"versions": ["5.10.0"], "edition": "enterprise"}
     with pytest.raises(ValueError) as exc_info:
         neo4j_vector_factory(query_return_value=low_version_response)
-    assert "Version index is only supported in Neo4j version 5.11 or greater" in str(
+    assert "Vector index is only supported in Neo4j version 5.11 or greater" in str(
         exc_info.value
     )
 
