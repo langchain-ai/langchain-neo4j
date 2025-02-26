@@ -30,7 +30,8 @@ from neo4j_graphrag.indexes import (
     retrieve_vector_index_info,
 )
 from neo4j_graphrag.neo4j_queries import get_search_query
-from neo4j_graphrag.types import EntityType, SearchType
+from neo4j_graphrag.types import EntityType as IndexType
+from neo4j_graphrag.types import SearchType
 from neo4j_graphrag.utils.version_utils import (
     get_version,
     has_metadata_filtering_support,
@@ -47,7 +48,7 @@ DISTANCE_MAPPING: Final[dict[DistanceStrategy, Literal["euclidean", "cosine"]]] 
     DistanceStrategy.COSINE: "cosine",
 }
 DEFAULT_SEARCH_TYPE = SearchType.VECTOR
-DEFAULT_ENTITY_TYPE = EntityType.NODE
+DEFAULT_INDEX_TYPE = IndexType.NODE
 
 
 def check_if_not_null(props: List[str], values: List[Any]) -> None:
@@ -184,7 +185,7 @@ class Neo4jVector(VectorStore):
         pre_delete_collection: bool = False,
         retrieval_query: str = "",
         relevance_score_fn: Optional[Callable[[float], float]] = None,
-        index_type: EntityType = DEFAULT_ENTITY_TYPE,
+        index_type: IndexType = DEFAULT_INDEX_TYPE,
         graph: Optional[Neo4jGraph] = None,
         embedding_dimension: Optional[int] = None,
     ) -> None:
@@ -740,7 +741,7 @@ class Neo4jVector(VectorStore):
                 "Neo4j version 5.18 or greater"
             )
         entity_prefix = (
-            "relationship" if self._index_type == EntityType.RELATIONSHIP else "node"
+            "relationship" if self._index_type == IndexType.RELATIONSHIP else "node"
         )
         default_retrieval = (
             f"RETURN {entity_prefix}.`{self.text_node_property}` AS text, score, "
