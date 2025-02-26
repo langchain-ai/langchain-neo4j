@@ -2,6 +2,14 @@
 
 ## Next
 
+### Changed
+
+- Renamed the `type` property to `role` on `Message` nodes in `Neo4jChatMessageHistory`.
+
+### Added
+
+- Introduced a `delete_session_node` parameter to the `clear` method in `Neo4jChatMessageHistory` for optional deletion of the `Session` node.
+
 ## 0.3.0
 
 ### Added
