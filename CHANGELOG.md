@@ -9,6 +9,7 @@
 ### Added
 
 - Introduced a `delete_session_node` parameter to the `clear` method in `Neo4jChatMessageHistory` for optional deletion of the `Session` node.
+- Updates the `GraphCypherQAChain` to use the same schema format as `Neo4jGraph`.
 
 ## 0.3.0
 
