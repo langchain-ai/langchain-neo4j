@@ -111,7 +111,9 @@ def test_invalid_credentials(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_message_history_clear_messages(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_message_history_clear_messages(
+    neo4j_credentials: Dict[str, str],
+) -> None:
     message_history = Neo4jChatMessageHistory(
         session_id="123",
         url=neo4j_credentials["url"],
@@ -138,7 +140,7 @@ def test_neo4j_message_history_clear_messages(neo4j_credentials: Dict[str, str])
 
 @pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_message_history_clear_session_and_messages(
-    neo4j_credentials: Dict[str, str]
+    neo4j_credentials: Dict[str, str],
 ) -> None:
     message_history = Neo4jChatMessageHistory(
         session_id="123",
