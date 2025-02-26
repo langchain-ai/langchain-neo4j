@@ -3,7 +3,6 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from neo4j import Record
-from neo4j._sync.driver import EagerResult
 from neo4j._work.summary import ResultSummary
 from neo4j.exceptions import ClientError, ConfigurationError, Neo4jError
 from neo4j_graphrag.schema import LIST_LIMIT
@@ -19,7 +18,7 @@ def mock_neo4j_driver() -> Generator[MagicMock, None, None]:
         mock_driver.return_value = mock_driver_instance
         mock_driver_instance.verify_connectivity.return_value = None
         mock_driver_instance.execute_query = MagicMock(
-            return_value=EagerResult(
+            return_value=MagicMock(
                 records=[], summary=MagicMock(spec=ResultSummary), keys=[]
             )
         )
@@ -245,15 +244,15 @@ def test_refresh_schema_handles_client_error(mock_neo4j_driver: MagicMock) -> No
     ]
 
     mock_neo4j_driver.execute_query.side_effect = [
-        EagerResult(
+        MagicMock(
             records=node_properties, summary=MagicMock(spec=ResultSummary), keys=[]
         ),
-        EagerResult(
+        MagicMock(
             records=relationships_properties,
             summary=MagicMock(spec=ResultSummary),
             keys=[],
         ),
-        EagerResult(
+        MagicMock(
             records=relationships, summary=MagicMock(spec=ResultSummary), keys=[]
         ),
         ClientError("Mock ClientError"),
