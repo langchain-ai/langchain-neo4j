@@ -3,6 +3,13 @@ from typing import List, Optional, Union
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import BaseMessage, messages_from_dict
 from langchain_core.utils import get_from_dict_or_env
+from neo4j_graphrag.message_history import (
+    ADD_MESSAGE_QUERY,
+    CREATE_SESSION_NODE_QUERY,
+    DELETE_MESSAGES_QUERY,
+    DELETE_SESSION_AND_MESSAGES_QUERY,
+    GET_MESSAGES_QUERY,
+)
 
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
 
@@ -71,26 +78,27 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
         self._window = window
         # Create session node
         self._driver.execute_query(
-            f"MERGE (s:`{self._node_label}` {{id:$session_id}})",
+            CREATE_SESSION_NODE_QUERY.format(node_label=self._node_label),
             {"session_id": self._session_id},
-        ).summary
+        )
 
     @property
     def messages(self) -> List[BaseMessage]:
         """Retrieve the messages from Neo4j"""
-        query = (
-            f"MATCH (s:`{self._node_label}`)-[:LAST_MESSAGE]->(last_message) "
-            "WHERE s.id = $session_id MATCH p=(last_message)<-[:NEXT*0.."
-            f"{self._window*2}]-() WITH p, length(p) AS length "
-            "ORDER BY length DESC LIMIT 1 UNWIND reverse(nodes(p)) AS node "
-            "RETURN {data:{content: node.content}, type:node.type} AS result"
-        )
         records, _, _ = self._driver.execute_query(
-            query, {"session_id": self._session_id}
+            GET_MESSAGES_QUERY.format(
+                node_label=self._node_label, window=self._window * 2
+            ),
+            {"session_id": self._session_id},
         )
-
-        messages = messages_from_dict([el["result"] for el in records])
-        return messages
+        messages = [
+            {
+                "data": el["result"]["data"],
+                "type": el["result"]["role"],
+            }
+            for el in records
+        ]
+        return messages_from_dict(messages)
 
     @messages.setter
     def messages(self, messages: List[BaseMessage]) -> None:
@@ -101,33 +109,34 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
 
     def add_message(self, message: BaseMessage) -> None:
         """Append the message to the record in Neo4j"""
-        query = (
-            f"MATCH (s:`{self._node_label}`) WHERE s.id = $session_id "
-            "OPTIONAL MATCH (s)-[lm:LAST_MESSAGE]->(last_message) "
-            "CREATE (s)-[:LAST_MESSAGE]->(new:Message) "
-            "SET new += {type:$type, content:$content} "
-            "WITH new, lm, last_message WHERE last_message IS NOT NULL "
-            "CREATE (last_message)-[:NEXT]->(new) "
-            "DELETE lm"
-        )
         self._driver.execute_query(
-            query,
+            ADD_MESSAGE_QUERY.format(node_label=self._node_label),
             {
-                "type": message.type,
+                "role": message.type,
                 "content": message.content,
                 "session_id": self._session_id,
             },
-        ).summary
-
-    def clear(self) -> None:
-        """Clear session memory from Neo4j"""
-        query = (
-            f"MATCH (s:`{self._node_label}`)-[:LAST_MESSAGE]->(last_message) "
-            "WHERE s.id = $session_id MATCH p=(last_message)<-[:NEXT]-() "
-            "WITH p, length(p) AS length ORDER BY length DESC LIMIT 1 "
-            "UNWIND nodes(p) as node DETACH DELETE node;"
         )
-        self._driver.execute_query(query, {"session_id": self._session_id}).summary
+
+    def clear(self, delete_session_node: bool = False) -> None:
+        """Clear session memory from Neo4j
+
+        Args:
+            delete_session_node (bool): Whether to delete the session node.
+                Defaults to False.
+        """
+        if delete_session_node:
+            self._driver.execute_query(
+                query_=DELETE_SESSION_AND_MESSAGES_QUERY.format(
+                    node_label=self._node_label
+                ),
+                parameters_={"session_id": self._session_id},
+            )
+        else:
+            self._driver.execute_query(
+                query_=DELETE_MESSAGES_QUERY.format(node_label=self._node_label),
+                parameters_={"session_id": self._session_id},
+            )
 
     def __del__(self) -> None:
         if self._driver:

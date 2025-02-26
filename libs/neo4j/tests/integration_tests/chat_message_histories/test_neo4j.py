@@ -120,3 +120,45 @@ def test_invalid_credentials() -> None:
     assert "Please ensure that the username and password are correct" in str(
         exc_info.value
     )
+
+
+def test_neo4j_message_history_clear_messages() -> None:
+    message_history = Neo4jChatMessageHistory(
+        session_id="123", url=url, username=username, password=password
+    )
+    message_history.add_messages(
+        [
+            HumanMessage(content="You are a helpful assistant."),
+            AIMessage(content="Hello"),
+        ]
+    )
+    assert len(message_history.messages) == 2
+    message_history.clear()
+    assert len(message_history.messages) == 0
+    # Test that the session node is not deleted
+    results = message_history._driver.execute_query(
+        query_="MATCH (s:`Session`) WHERE s.id = '123' RETURN s"
+    )
+    assert len(results.records) == 1
+    assert results.records[0]["s"]["id"] == "123"
+    assert list(results.records[0]["s"].labels) == ["Session"]
+
+
+def test_neo4j_message_history_clear_session_and_messages() -> None:
+    message_history = Neo4jChatMessageHistory(
+        session_id="123", url=url, username=username, password=password
+    )
+    message_history.add_messages(
+        [
+            HumanMessage(content="You are a helpful assistant."),
+            AIMessage(content="Hello"),
+        ]
+    )
+    assert len(message_history.messages) == 2
+    message_history.clear(delete_session_node=True)
+    assert len(message_history.messages) == 0
+    # Test that the session node is deleted
+    results = message_history._driver.execute_query(
+        query_="MATCH (s:`Session`) WHERE s.id = '123' RETURN s"
+    )
+    assert results.records == []
