@@ -2,7 +2,7 @@ from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
-from neo4j._data import Record
+from neo4j import Record
 from neo4j._sync.driver import EagerResult
 from neo4j._work.summary import ResultSummary
 from neo4j.exceptions import ClientError, ConfigurationError, Neo4jError
