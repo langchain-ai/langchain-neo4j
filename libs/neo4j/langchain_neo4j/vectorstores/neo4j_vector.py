@@ -15,6 +15,7 @@ from typing import (
     Type,
 )
 
+import neo4j
 import numpy as np
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
@@ -514,14 +515,6 @@ class Neo4jVector(VectorStore):
         graph: Optional[Neo4jGraph] = None,
         embedding_dimension: Optional[int] = None,
     ) -> None:
-        try:
-            import neo4j
-        except ImportError:
-            raise ImportError(
-                "Could not import neo4j python package. "
-                "Please install it with `pip install neo4j`."
-            )
-
         # Allow only cosine and euclidean distance strategies
         if distance_strategy not in [
             DistanceStrategy.EUCLIDEAN_DISTANCE,

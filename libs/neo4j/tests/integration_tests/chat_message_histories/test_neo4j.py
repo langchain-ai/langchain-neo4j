@@ -12,6 +12,7 @@ username = os.environ.get("NEO4J_USERNAME", "neo4j")
 password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_add_messages() -> None:
     """Basic testing: adding messages to the Neo4jChatMessageHistory."""
     os.environ["NEO4J_URI"] = url
@@ -62,6 +63,7 @@ def test_add_messages() -> None:
     del os.environ["NEO4J_PASSWORD"]
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_add_messages_graph_object() -> None:
     """Basic testing: Passing driver through graph object."""
     os.environ["NEO4J_URI"] = url
@@ -122,6 +124,7 @@ def test_invalid_credentials() -> None:
     )
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_message_history_clear_messages() -> None:
     message_history = Neo4jChatMessageHistory(
         session_id="123", url=url, username=username, password=password
@@ -144,6 +147,7 @@ def test_neo4j_message_history_clear_messages() -> None:
     assert list(results.records[0]["s"].labels) == ["Session"]
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_message_history_clear_session_and_messages() -> None:
     message_history = Neo4jChatMessageHistory(
         session_id="123", url=url, username=username, password=password

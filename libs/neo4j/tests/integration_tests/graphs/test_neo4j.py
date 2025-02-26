@@ -43,15 +43,14 @@ test_data_backticks = [
 ]
 
 
+url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+username = os.environ.get("NEO4J_USERNAME", "neo4j")
+password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
+
+
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_cypher_return_correct_schema() -> None:
     """Test that chain returns direct results."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -112,15 +111,9 @@ def test_cypher_return_correct_schema() -> None:
     )
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_timeout() -> None:
     """Test that neo4j uses the timeout correctly."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password, timeout=0.1)
     try:
         graph.query("UNWIND range(0,100000,1) AS i MERGE (:Foo {id:i})")
@@ -132,15 +125,9 @@ def test_neo4j_timeout() -> None:
         )
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_sanitize_values() -> None:
     """Test that lists with more than 128 elements are removed from the results."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password, sanitize=True)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
@@ -160,15 +147,9 @@ def test_neo4j_sanitize_values() -> None:
     assert output == [{}]
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_add_data() -> None:
     """Test that neo4j correctly import graph document."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password, sanitize=True)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
@@ -184,15 +165,9 @@ def test_neo4j_add_data() -> None:
     assert graph.structured_schema["metadata"]["constraint"] == []
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_add_data_source() -> None:
     """Test that neo4j correctly import graph document with source."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password, sanitize=True)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
@@ -212,15 +187,9 @@ def test_neo4j_add_data_source() -> None:
     assert graph.structured_schema["metadata"]["constraint"] == []
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_add_data_base() -> None:
     """Test that neo4j correctly import graph document with base_entity."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password, sanitize=True)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
@@ -240,15 +209,9 @@ def test_neo4j_add_data_base() -> None:
     assert graph.structured_schema["metadata"]["constraint"] != []
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_add_data_base_source() -> None:
     """Test that neo4j correctly import graph document with base_entity and source."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password, sanitize=True)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
@@ -269,15 +232,9 @@ def test_neo4j_add_data_base_source() -> None:
     assert graph.structured_schema["metadata"]["constraint"] != []
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_filtering_labels() -> None:
     """Test that neo4j correctly filters excluded labels."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password, sanitize=True)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
@@ -298,15 +255,9 @@ def test_neo4j_filtering_labels() -> None:
     assert graph.structured_schema["relationships"] == []
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_driver_config() -> None:
     """Test that neo4j works with driver config."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -316,15 +267,9 @@ def test_driver_config() -> None:
     graph.query("RETURN 'foo'")
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_enhanced_schema() -> None:
     """Test that neo4j works with driver config."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(
         url=url, username=username, password=password, enhanced_schema=True
     )
@@ -367,15 +312,9 @@ def test_enhanced_schema() -> None:
     assert graph.structured_schema == expected_output
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_enhanced_schema_exception() -> None:
     """Test no error with weird schema."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -413,15 +352,9 @@ def test_enhanced_schema_exception() -> None:
     assert graph.structured_schema == expected_output
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_backticks() -> None:
     """Test that backticks are correctly removed."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password)
     graph.query("MATCH (n) DETACH DELETE n")
     graph.add_graph_documents(test_data_backticks)
@@ -434,15 +367,9 @@ def test_backticks() -> None:
     assert rels == expected_rels
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_context_manager() -> None:
     """Test that Neo4jGraph works correctly with context manager."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     with Neo4jGraph(url=url, username=username, password=password) as graph:
         # Test that the connection is working
         graph.query("RETURN 1 as n")
@@ -455,15 +382,9 @@ def test_neo4j_context_manager() -> None:
         pass
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_explicit_close() -> None:
     """Test that Neo4jGraph can be explicitly closed."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password)
     # Test that the connection is working
     graph.query("RETURN 1 as n")
@@ -479,15 +400,9 @@ def test_neo4j_explicit_close() -> None:
         pass
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_error_after_close() -> None:
     """Test that Neo4jGraph operations raise proper errors after closing."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password)
     graph.query("RETURN 1")  # Should work
     graph.close()
@@ -514,15 +429,9 @@ def test_neo4j_error_after_close() -> None:
         assert "connection has been closed" in str(e)
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_concurrent_connections() -> None:
     """Test that multiple Neo4jGraph instances can be used independently."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph1 = Neo4jGraph(url=url, username=username, password=password)
     graph2 = Neo4jGraph(url=url, username=username, password=password)
 
@@ -542,15 +451,9 @@ def test_neo4j_concurrent_connections() -> None:
     graph2.close()
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_nested_context_managers() -> None:
     """Test that nested context managers work correctly."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     with Neo4jGraph(url=url, username=username, password=password) as graph1:
         with Neo4jGraph(url=url, username=username, password=password) as graph2:
             # Both connections should work
@@ -578,30 +481,18 @@ def test_neo4j_nested_context_managers() -> None:
         pass
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_multiple_close() -> None:
     """Test that Neo4jGraph can be closed multiple times without error."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     graph = Neo4jGraph(url=url, username=username, password=password)
     # Test that multiple closes don't raise errors
     graph.close()
     graph.close()  # This should not raise an error
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_invalid_url() -> None:
     """Test initializing with invalid credentials raises ValueError."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-    assert url is not None
-    assert username is not None
-    assert password is not None
-
     # Parse the original URL
     parsed_url = urllib.parse.urlparse(url)
     # Increment the port number by 1 and wrap around if necessary
@@ -621,6 +512,7 @@ def test_invalid_url() -> None:
     assert "Please ensure that the url is correct" in str(exc_info.value)
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_invalid_credentials() -> None:
     """Test initializing with invalid credentials raises ValueError."""
     url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")

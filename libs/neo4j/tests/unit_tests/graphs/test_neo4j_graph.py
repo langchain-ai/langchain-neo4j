@@ -1,5 +1,4 @@
-from types import ModuleType
-from typing import Any, Dict, Generator, Mapping, Sequence, Union
+from typing import Any, Dict, Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -170,27 +169,6 @@ def test_multiple_close_calls_safe(mock_neo4j_driver: MagicMock) -> None:
 
     # Second close should not raise an error
     graph.close()  # Should not raise any exception
-
-
-def test_import_error() -> None:
-    """Test that ImportError is raised when neo4j package is not installed."""
-    original_import = __import__
-
-    def mock_import(
-        name: str,
-        globals: Union[Mapping[str, object], None] = None,
-        locals: Union[Mapping[str, object], None] = None,
-        fromlist: Sequence[str] = (),
-        level: int = 0,
-    ) -> ModuleType:
-        if name == "neo4j":
-            raise ImportError()
-        return original_import(name, globals, locals, fromlist, level)
-
-    with patch("builtins.__import__", side_effect=mock_import):
-        with pytest.raises(ImportError) as exc_info:
-            Neo4jGraph()
-        assert "Could not import neo4j python package." in str(exc_info.value)
 
 
 def test_neo4j_graph_init_with_empty_credentials() -> None:

@@ -3,6 +3,7 @@
 from typing import Any, Optional, Type
 from unittest.mock import MagicMock, patch
 
+import neo4j
 import pytest
 
 from langchain_neo4j.vectorstores.neo4j_vector import (
@@ -30,7 +31,10 @@ def mock_vector_store() -> Neo4jVector:
     mock_neo4j.exceptions.ServiceUnavailable = Exception
     mock_neo4j.exceptions.AuthError = Exception
 
-    with patch.dict("sys.modules", {"neo4j": mock_neo4j}):
+    with patch(
+        "langchain_neo4j.vectorstores.neo4j_vector.neo4j",
+        new=mock_neo4j,
+    ):
         with patch.object(
             Neo4jVector,
             "query",
@@ -97,7 +101,10 @@ def neo4j_vector_factory() -> Any:
         mock_neo4j.exceptions.ServiceUnavailable = service_unavailable_class
         mock_neo4j.exceptions.AuthError = auth_error_class
 
-        with patch.dict("sys.modules", {"neo4j": mock_neo4j}):
+        with patch(
+            "langchain_neo4j.vectorstores.neo4j_vector.neo4j",
+            new=mock_neo4j,
+        ):
             query_return = (
                 [query_return_value]
                 if query_return_value
@@ -545,21 +552,6 @@ def test_construct_metadata_filter_logical_operator_empty_collect_params() -> No
     )
 
 
-def test_neo4jvector_import_error() -> None:
-    with patch.dict("sys.modules", {"neo4j": None}):
-        with pytest.raises(ImportError) as exc_info:
-            Neo4jVector(
-                embedding=MagicMock(),
-                url="bolt://localhost:7687",
-                username="neo4j",
-                password="password",
-            )
-        assert (
-            "Could not import neo4j python package. Please install it with "
-            "`pip install neo4j`." in str(exc_info.value)
-        )
-
-
 def test_neo4jvector_invalid_distance_strategy() -> None:
     with pytest.raises(ValueError) as exc_info:
         Neo4jVector(
@@ -575,16 +567,15 @@ def test_neo4jvector_invalid_distance_strategy() -> None:
 
 
 def test_neo4jvector_service_unavailable() -> None:
-    mock_neo4j = MagicMock()
-    mock_neo4j.exceptions.ServiceUnavailable = Exception
-
     mock_driver_instance = MagicMock()
     mock_driver_instance.verify_connectivity.side_effect = (
-        mock_neo4j.exceptions.ServiceUnavailable
+        neo4j.exceptions.ServiceUnavailable
     )
-    mock_neo4j.GraphDatabase.driver.return_value = mock_driver_instance
 
-    with patch.dict("sys.modules", {"neo4j": mock_neo4j}):
+    with patch(
+        "langchain_neo4j.vectorstores.neo4j_vector.neo4j.GraphDatabase.driver",
+        return_value=mock_driver_instance,
+    ):
         with pytest.raises(ValueError) as exc_info:
             Neo4jVector(
                 embedding=MagicMock(),

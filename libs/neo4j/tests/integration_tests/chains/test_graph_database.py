@@ -3,19 +3,21 @@
 import os
 from unittest.mock import MagicMock
 
+import pytest
 from langchain_core.language_models import BaseLanguageModel
 
 from langchain_neo4j.chains.graph_qa.cypher import GraphCypherQAChain
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
 from tests.llms.fake_llm import FakeLLM
 
+url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
+username = os.environ.get("NEO4J_USERNAME", "neo4j")
+password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
 
+
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_connect_neo4j() -> None:
     """Test that Neo4j database is correctly instantiated and connected."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -27,11 +29,9 @@ def test_connect_neo4j() -> None:
     assert output == expected_output
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_connect_neo4j_env() -> None:
     """Test that Neo4j database environment variables."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
     os.environ["NEO4J_URI"] = url
     os.environ["NEO4J_USERNAME"] = username
     os.environ["NEO4J_PASSWORD"] = password
@@ -40,24 +40,16 @@ def test_connect_neo4j_env() -> None:
     output = graph.query('RETURN "test" AS output')
     expected_output = [{"output": "test"}]
     assert output == expected_output
-    del os.environ["NEO4J_URI"]
-    del os.environ["NEO4J_USERNAME"]
-    del os.environ["NEO4J_PASSWORD"]
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_cypher_generating_run() -> None:
     """Test that Cypher statement is correctly generated and executed."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-
     graph = Neo4jGraph(
         url=url,
         username=username,
         password=password,
     )
-    # Delete all nodes in the graph
-    graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship
     graph.query(
         "CREATE (a:Actor {name:'Bruce Willis'})"
@@ -85,14 +77,10 @@ def test_cypher_generating_run() -> None:
     assert output == expected_output
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_cypher_top_k() -> None:
     """Test top_k parameter correctly limits the number of results in the context."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-
     TOP_K = 1
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -126,12 +114,9 @@ def test_cypher_top_k() -> None:
     assert len(output) == TOP_K
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_cypher_intermediate_steps() -> None:
     """Test the returning of the intermediate steps."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -173,12 +158,9 @@ def test_cypher_intermediate_steps() -> None:
     assert context == expected_context
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_cypher_return_direct() -> None:
     """Test that chain returns direct results."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -211,12 +193,9 @@ def test_cypher_return_direct() -> None:
     assert output == expected_output
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_function_response() -> None:
     """Test returning a function response."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -251,12 +230,9 @@ def test_function_response() -> None:
     assert output == expected_output
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_exclude_types() -> None:
     """Test exclude types from schema."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -290,12 +266,9 @@ def test_exclude_types() -> None:
     assert chain.graph_schema == expected_schema
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_include_types() -> None:
     """Test include types from schema."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-
     graph = Neo4jGraph(
         url=url,
         username=username,
@@ -330,12 +303,9 @@ def test_include_types() -> None:
     assert chain.graph_schema == expected_schema
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_include_types2() -> None:
     """Test include types from schema."""
-    url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-    username = os.environ.get("NEO4J_USERNAME", "neo4j")
-    password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
-
     graph = Neo4jGraph(
         url=url,
         username=username,
