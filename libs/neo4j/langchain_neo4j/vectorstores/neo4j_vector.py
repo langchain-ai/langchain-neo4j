@@ -365,7 +365,7 @@ class Neo4jVector(VectorStore):
             version_tuple, is_aura
         )
 
-    def retrieve_existing_index(self) -> Tuple[Optional[int], Optional[str]]:
+    def retrieve_existing_index(self) -> Optional[Tuple[Optional[int], str]]:
         """
         Check if the vector index exists in the Neo4j database
         and returns its embedding dimension.
@@ -396,9 +396,9 @@ class Neo4jVector(VectorStore):
                     embedding_dimension = index_config["vector.dimensions"]
                 return embedding_dimension, index_information["entityType"]
             except IndexError:
-                return None, None
+                return None
         else:
-            return None, None
+            return None
 
     def retrieve_existing_fts_index(
         self, text_node_properties: List[str] = []
@@ -493,8 +493,14 @@ class Neo4jVector(VectorStore):
             search_type=search_type,
             **kwargs,
         )
+
         # Check if the vector index already exists
-        embedding_dimension, index_type = store.retrieve_existing_index()
+        existing_index_info = store.retrieve_existing_index()
+        if existing_index_info:
+            embedding_dimension, index_type = existing_index_info
+        else:
+            embedding_dimension = None
+            index_type = None
 
         # Raise error if relationship index type
         if index_type == "RELATIONSHIP":
@@ -964,11 +970,15 @@ class Neo4jVector(VectorStore):
             **kwargs,
         )
 
+        # Check if the vector index already exists
+        existing_index_info = store.retrieve_existing_index()
+        if existing_index_info:
+            embedding_dimension_from_existing, index_type = existing_index_info
+        else:
+            embedding_dimension_from_existing = None
+            index_type = None
+
         if embedding_dimension:
-            (
-                embedding_dimension_from_existing,
-                index_type,
-            ) = store.retrieve_existing_index()
             if embedding_dimension_from_existing != embedding_dimension:
                 raise ValueError(
                     "The provided embedding function and vector index "
@@ -977,7 +987,7 @@ class Neo4jVector(VectorStore):
                     f"Vector index dimension: {embedding_dimension_from_existing}"
                 )
         else:
-            embedding_dimension, index_type = store.retrieve_existing_index()
+            embedding_dimension = embedding_dimension_from_existing
 
         # Raise error if relationship index type
         if index_type == "RELATIONSHIP":
@@ -1049,11 +1059,15 @@ class Neo4jVector(VectorStore):
             **kwargs,
         )
 
+        # Check if the vector index already exists
+        existing_index_info = store.retrieve_existing_index()
+        if existing_index_info:
+            embedding_dimension_from_existing, index_type = existing_index_info
+        else:
+            embedding_dimension_from_existing = None
+            index_type = None
+
         if embedding_dimension:
-            (
-                embedding_dimension_from_existing,
-                index_type,
-            ) = store.retrieve_existing_index()
             if embedding_dimension_from_existing != embedding_dimension:
                 raise ValueError(
                     "The provided embedding function and vector index "
@@ -1062,7 +1076,7 @@ class Neo4jVector(VectorStore):
                     f"Vector index dimension: {embedding_dimension_from_existing}"
                 )
         else:
-            embedding_dimension, index_type = store.retrieve_existing_index()
+            embedding_dimension = embedding_dimension_from_existing
 
         if not index_type:
             raise ValueError(
@@ -1180,7 +1194,12 @@ class Neo4jVector(VectorStore):
         )
 
         # Check if the vector index already exists
-        embedding_dimension, index_type = store.retrieve_existing_index()
+        existing_index_info = store.retrieve_existing_index()
+        if existing_index_info:
+            embedding_dimension, index_type = existing_index_info
+        else:
+            embedding_dimension = None
+            index_type = None
 
         # Raise error if relationship index type
         if index_type == "RELATIONSHIP":
