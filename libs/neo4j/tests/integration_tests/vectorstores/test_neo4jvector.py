@@ -96,6 +96,7 @@ def test_neo4jvector_euclidean(neo4j_credentials: Neo4jCredentials) -> None:
         embedding=FakeEmbeddingsWithOsDimension(),
         pre_delete_collection=True,
         distance_strategy=DistanceStrategy.EUCLIDEAN_DISTANCE,
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
     assert output == [Document(page_content="foo")]
