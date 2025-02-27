@@ -14,6 +14,7 @@ from langchain_neo4j.vectorstores.neo4j_vector import (
     _get_search_index_query,
 )
 from langchain_neo4j.vectorstores.utils import DistanceStrategy
+from tests.integration_tests.utils import Neo4jCredentials
 from tests.integration_tests.vectorstores.fake_embeddings import (
     AngularTwoDimensionalEmbeddings,
     FakeEmbeddings,
@@ -88,14 +89,11 @@ def test_neo4jvector() -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_euclidean(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_euclidean(neo4j_credentials: Neo4jCredentials) -> None:
     """Test euclidean distance"""
     docsearch = Neo4jVector.from_texts(
         texts=texts,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
         distance_strategy=DistanceStrategy.EUCLIDEAN_DISTANCE,
     )
@@ -106,17 +104,15 @@ def test_neo4jvector_euclidean(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_embeddings(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_embeddings(neo4j_credentials: Neo4jCredentials) -> None:
     """Test end to end construction with embeddings and search."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     docsearch = Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
     assert output == [Document(page_content="foo")]
@@ -125,24 +121,22 @@ def test_neo4jvector_embeddings(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_catch_wrong_index_name(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_catch_wrong_index_name(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
     """Test if index name is misspelled, but node label and property are correct."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     existing = Neo4jVector.from_existing_index(
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="test",
+        **neo4j_credentials,
     )
     output = existing.similarity_search("foo", k=1)
     assert output == [Document(page_content="foo")]
@@ -151,25 +145,23 @@ def test_neo4jvector_catch_wrong_index_name(neo4j_credentials: Dict[str, str]) -
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_catch_wrong_node_label(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_catch_wrong_node_label(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
     """Test if node label is misspelled, but index name is correct."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     existing = Neo4jVector.from_existing_index(
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="vector",
         node_label="test",
+        **neo4j_credentials,
     )
     output = existing.similarity_search("foo", k=1)
     assert output == [Document(page_content="foo")]
@@ -178,17 +170,15 @@ def test_neo4jvector_catch_wrong_node_label(neo4j_credentials: Dict[str, str]) -
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_with_metadatas(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_with_metadatas(neo4j_credentials: Neo4jCredentials) -> None:
     """Test end to end construction and search."""
     metadatas = [{"page": str(i)} for i in range(len(texts))]
     docsearch = Neo4jVector.from_texts(
         texts=texts,
         embedding=FakeEmbeddingsWithOsDimension(),
         metadatas=metadatas,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
     assert output == [Document(page_content="foo", metadata={"page": "0"})]
@@ -198,7 +188,7 @@ def test_neo4jvector_with_metadatas(neo4j_credentials: Dict[str, str]) -> None:
 
 @pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4jvector_with_metadatas_with_scores(
-    neo4j_credentials: Dict[str, str],
+    neo4j_credentials: Neo4jCredentials,
 ) -> None:
     """Test end to end construction and search."""
     metadatas = [{"page": str(i)} for i in range(len(texts))]
@@ -206,10 +196,8 @@ def test_neo4jvector_with_metadatas_with_scores(
         texts=texts,
         embedding=FakeEmbeddingsWithOsDimension(),
         metadatas=metadatas,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     output = [
         (doc, round(score, 1))
@@ -221,17 +209,15 @@ def test_neo4jvector_with_metadatas_with_scores(
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_relevance_score(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_relevance_score(neo4j_credentials: Neo4jCredentials) -> None:
     """Test to make sure the relevance score is scaled to 0-1."""
     metadatas = [{"page": str(i)} for i in range(len(texts))]
     docsearch = Neo4jVector.from_texts(
         texts=texts,
         embedding=FakeEmbeddingsWithOsDimension(),
         metadatas=metadatas,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
 
     output = docsearch.similarity_search_with_relevance_scores("foo", k=3)
@@ -250,7 +236,7 @@ def test_neo4jvector_relevance_score(neo4j_credentials: Dict[str, str]) -> None:
 
 @pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4jvector_retriever_search_threshold(
-    neo4j_credentials: Dict[str, str],
+    neo4j_credentials: Neo4jCredentials,
 ) -> None:
     """Test using retriever for searching with threshold."""
     metadatas = [{"page": str(i)} for i in range(len(texts))]
@@ -258,10 +244,8 @@ def test_neo4jvector_retriever_search_threshold(
         texts=texts,
         embedding=FakeEmbeddingsWithOsDimension(),
         metadatas=metadatas,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
 
     retriever = docsearch.as_retriever(
@@ -278,16 +262,14 @@ def test_neo4jvector_retriever_search_threshold(
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_custom_return_neo4jvector(neo4j_credentials: Dict[str, str]) -> None:
+def test_custom_return_neo4jvector(neo4j_credentials: Neo4jCredentials) -> None:
     """Test end to end construction and search."""
     docsearch = Neo4jVector.from_texts(
         texts=["test"],
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
         retrieval_query="RETURN 'foo' AS text, score, {test: 'test'} AS metadata",
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
     assert output == [Document(page_content="foo", metadata={"test": "test"})]
@@ -296,37 +278,31 @@ def test_custom_return_neo4jvector(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_prefer_indexname(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_prefer_indexname(neo4j_credentials: Neo4jCredentials) -> None:
     """Test using when two indexes are found, prefer by index_name."""
     Neo4jVector.from_texts(
         texts=["foo"],
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
 
     Neo4jVector.from_texts(
         texts=["bar"],
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="foo",
         node_label="Test",
         embedding_node_property="vector",
         text_node_property="info",
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
 
     existing_index = Neo4jVector.from_existing_index(
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="foo",
         text_node_property="info",
+        **neo4j_credentials,
     )
 
     output = existing_index.similarity_search("bar", k=1)
@@ -335,37 +311,33 @@ def test_neo4jvector_prefer_indexname(neo4j_credentials: Dict[str, str]) -> None
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_prefer_indexname_insert(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_prefer_indexname_insert(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
     """Test using when two indexes are found, prefer by index_name."""
     Neo4jVector.from_texts(
         texts=["baz"],
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
 
     Neo4jVector.from_texts(
         texts=["foo"],
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="foo",
         node_label="Test",
         embedding_node_property="vector",
         text_node_property="info",
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
 
     existing_index = Neo4jVector.from_existing_index(
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="foo",
         text_node_property="info",
+        **neo4j_credentials,
     )
 
     existing_index.add_documents([Document(page_content="bar", metadata={})])
@@ -379,18 +351,16 @@ def test_neo4jvector_prefer_indexname_insert(neo4j_credentials: Dict[str, str]) 
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_hybrid(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_hybrid(neo4j_credentials: Neo4jCredentials) -> None:
     """Test end to end construction with hybrid search."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     docsearch = Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
         search_type=SearchType.HYBRID,
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
     assert output == [Document(page_content="foo")]
@@ -399,18 +369,16 @@ def test_neo4jvector_hybrid(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_hybrid_deduplicate(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_hybrid_deduplicate(neo4j_credentials: Neo4jCredentials) -> None:
     """Test result deduplication with hybrid search."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     docsearch = Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
         search_type=SearchType.HYBRID,
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=3)
 
@@ -424,19 +392,19 @@ def test_neo4jvector_hybrid_deduplicate(neo4j_credentials: Dict[str, str]) -> No
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_hybrid_retrieval_query(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_hybrid_retrieval_query(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
     """Test custom retrieval_query with hybrid search."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     docsearch = Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
         search_type=SearchType.HYBRID,
         retrieval_query="RETURN 'moo' AS text, score, {test: 'test'} AS metadata",
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
     assert output == [Document(page_content="moo", metadata={"test": "test"})]
@@ -445,19 +413,19 @@ def test_neo4jvector_hybrid_retrieval_query(neo4j_credentials: Dict[str, str]) -
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_hybrid_retrieval_query2(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_hybrid_retrieval_query2(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
     """Test custom retrieval_query with hybrid search."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     docsearch = Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
         search_type=SearchType.HYBRID,
         retrieval_query="RETURN node.text AS text, score, {test: 'test'} AS metadata",
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
     assert output == [Document(page_content="foo", metadata={"test": "test"})]
@@ -466,26 +434,22 @@ def test_neo4jvector_hybrid_retrieval_query2(neo4j_credentials: Dict[str, str]) 
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_missing_keyword(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_missing_keyword(neo4j_credentials: Neo4jCredentials) -> None:
     """Test hybrid search with missing keyword_index_search."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     docsearch = Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     try:
         Neo4jVector.from_existing_index(
             embedding=FakeEmbeddingsWithOsDimension(),
-            url=neo4j_credentials["url"],
-            username=neo4j_credentials["username"],
-            password=neo4j_credentials["password"],
             index_name="vector",
             search_type=SearchType.HYBRID,
+            **neo4j_credentials,
         )
     except ValueError as e:
         assert str(e) == (
@@ -495,27 +459,23 @@ def test_neo4jvector_missing_keyword(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_hybrid_from_existing(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_hybrid_from_existing(neo4j_credentials: Neo4jCredentials) -> None:
     """Test hybrid search with missing keyword_index_search."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
         search_type=SearchType.HYBRID,
+        **neo4j_credentials,
     )
     existing = Neo4jVector.from_existing_index(
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="vector",
         keyword_index_name="keyword",
         search_type=SearchType.HYBRID,
+        **neo4j_credentials,
     )
 
     output = existing.similarity_search("foo", k=1)
@@ -525,19 +485,17 @@ def test_neo4jvector_hybrid_from_existing(neo4j_credentials: Dict[str, str]) -> 
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_from_existing_graph(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_from_existing_graph(neo4j_credentials: Neo4jCredentials) -> None:
     """Test from_existing_graph with a single property."""
     graph = Neo4jVector.from_texts(
         texts=["test"],
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="foo",
         node_label="Foo",
         embedding_node_property="vector",
         text_node_property="info",
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
 
     graph.query("MATCH (n) DETACH DELETE n")
@@ -546,13 +504,11 @@ def test_neo4jvector_from_existing_graph(neo4j_credentials: Dict[str, str]) -> N
 
     existing = Neo4jVector.from_existing_graph(
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="vector",
         node_label="Test",
         text_node_properties=["name"],
         embedding_node_property="embedding",
+        **neo4j_credentials,
     )
 
     output = existing.similarity_search("foo", k=1)
@@ -563,20 +519,18 @@ def test_neo4jvector_from_existing_graph(neo4j_credentials: Dict[str, str]) -> N
 
 @pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4jvector_from_existing_graph_hybrid(
-    neo4j_credentials: Dict[str, str],
+    neo4j_credentials: Neo4jCredentials,
 ) -> None:
     """Test from_existing_graph hybrid with a single property."""
     graph = Neo4jVector.from_texts(
         texts=["test"],
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="foo",
         node_label="Foo",
         embedding_node_property="vector",
         text_node_property="info",
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
 
     graph.query("MATCH (n) DETACH DELETE n")
@@ -585,14 +539,12 @@ def test_neo4jvector_from_existing_graph_hybrid(
 
     existing = Neo4jVector.from_existing_graph(
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="vector",
         node_label="Test",
         text_node_properties=["name"],
         embedding_node_property="embedding",
         search_type=SearchType.HYBRID,
+        **neo4j_credentials,
     )
 
     output = existing.similarity_search("foo", k=1)
@@ -603,20 +555,18 @@ def test_neo4jvector_from_existing_graph_hybrid(
 
 @pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4jvector_from_existing_graph_multiple_properties(
-    neo4j_credentials: Dict[str, str],
+    neo4j_credentials: Neo4jCredentials,
 ) -> None:
     """Test from_existing_graph with a two property."""
     graph = Neo4jVector.from_texts(
         texts=["test"],
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="foo",
         node_label="Foo",
         embedding_node_property="vector",
         text_node_property="info",
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     graph.query("MATCH (n) DETACH DELETE n")
 
@@ -624,13 +574,11 @@ def test_neo4jvector_from_existing_graph_multiple_properties(
 
     existing = Neo4jVector.from_existing_graph(
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="vector",
         node_label="Test",
         text_node_properties=["name", "name2"],
         embedding_node_property="embedding",
+        **neo4j_credentials,
     )
 
     output = existing.similarity_search("foo", k=1)
@@ -641,20 +589,18 @@ def test_neo4jvector_from_existing_graph_multiple_properties(
 
 @pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4jvector_from_existing_graph_multiple_properties_hybrid(
-    neo4j_credentials: Dict[str, str],
+    neo4j_credentials: Neo4jCredentials,
 ) -> None:
     """Test from_existing_graph with a two property."""
     graph = Neo4jVector.from_texts(
         texts=["test"],
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="foo",
         node_label="Foo",
         embedding_node_property="vector",
         text_node_property="info",
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     graph.query("MATCH (n) DETACH DELETE n")
 
@@ -662,14 +608,12 @@ def test_neo4jvector_from_existing_graph_multiple_properties_hybrid(
 
     existing = Neo4jVector.from_existing_graph(
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         index_name="vector",
         node_label="Test",
         text_node_properties=["name", "name2"],
         embedding_node_property="embedding",
         search_type=SearchType.HYBRID,
+        **neo4j_credentials,
     )
 
     output = existing.similarity_search("foo", k=1)
@@ -679,18 +623,16 @@ def test_neo4jvector_from_existing_graph_multiple_properties_hybrid(
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_special_character(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_special_character(neo4j_credentials: Neo4jCredentials) -> None:
     """Test removing lucene."""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(texts, text_embeddings))
     docsearch = Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
         search_type=SearchType.HYBRID,
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search(
         "It is the end of the world. Take shelter!",
@@ -705,18 +647,16 @@ def test_neo4jvector_special_character(neo4j_credentials: Dict[str, str]) -> Non
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_hybrid_score_normalization(neo4j_credentials: Dict[str, str]) -> None:
+def test_hybrid_score_normalization(neo4j_credentials: Neo4jCredentials) -> None:
     """Test if we can get two 1.0 documents with RRF"""
     text_embeddings = FakeEmbeddingsWithOsDimension().embed_documents(texts)
     text_embedding_pairs = list(zip(["foo"], text_embeddings))
     docsearch = Neo4jVector.from_embeddings(
         text_embeddings=text_embedding_pairs,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
         search_type=SearchType.HYBRID,
+        **neo4j_credentials,
     )
     # Remove deduplication part of the query
     rrf_query = (
@@ -743,7 +683,7 @@ def test_hybrid_score_normalization(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_index_fetching(neo4j_credentials: Dict[str, str]) -> None:
+def test_index_fetching(neo4j_credentials: Neo4jCredentials) -> None:
     """testing correct index creation and fetching"""
     embeddings = FakeEmbeddings()
 
@@ -752,22 +692,18 @@ def test_index_fetching(neo4j_credentials: Dict[str, str]) -> None:
     ) -> Neo4jVector:
         return Neo4jVector.from_existing_graph(
             embedding=embeddings,
-            url=neo4j_credentials["url"],
-            username=neo4j_credentials["username"],
-            password=neo4j_credentials["password"],
             index_name=index,
             node_label=node_label,
             text_node_properties=text_properties,
             embedding_node_property="embedding",
+            **neo4j_credentials,
         )
 
     def fetch_store(index_name: str) -> Neo4jVector:
         store = Neo4jVector.from_existing_index(
             embedding=embeddings,
-            url=neo4j_credentials["url"],
-            username=neo4j_credentials["username"],
-            password=neo4j_credentials["password"],
             index_name=index_name,
+            **neo4j_credentials,
         )
         return store
 
@@ -789,7 +725,7 @@ def test_index_fetching(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_retrieval_params(neo4j_credentials: Dict[str, str]) -> None:
+def test_retrieval_params(neo4j_credentials: Neo4jCredentials) -> None:
     """Test if we use parameters in retrieval query"""
     docsearch = Neo4jVector.from_texts(
         texts=texts,
@@ -798,9 +734,7 @@ def test_retrieval_params(neo4j_credentials: Dict[str, str]) -> None:
         retrieval_query="""
         RETURN $test as text, score, {test: $test1} AS metadata
         """,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
+        **neo4j_credentials,
     )
 
     output = docsearch.similarity_search(
@@ -814,12 +748,9 @@ def test_retrieval_params(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_retrieval_dictionary(neo4j_credentials: Dict[str, str]) -> None:
+def test_retrieval_dictionary(neo4j_credentials: Neo4jCredentials) -> None:
     """Test if we use parameters in retrieval query"""
     docsearch = Neo4jVector.from_texts(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         texts=texts,
         embedding=FakeEmbeddings(),
         pre_delete_collection=True,
@@ -830,6 +761,7 @@ def test_retrieval_dictionary(neo4j_credentials: Dict[str, str]) -> None:
             skills: ["Python", "Data Analysis", "Machine Learning"]} as text, 
             score, {} AS metadata
         """,
+        **neo4j_credentials,
     )
     expected_output = [
         Document(
@@ -853,15 +785,13 @@ def test_retrieval_dictionary(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_metadata_filters_type1(neo4j_credentials: Dict[str, str]) -> None:
+def test_metadata_filters_type1(neo4j_credentials: Neo4jCredentials) -> None:
     """Test metadata filters"""
     docsearch = Neo4jVector.from_documents(
         DOCUMENTS,
         embedding=FakeEmbeddings(),
         pre_delete_collection=True,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
+        **neo4j_credentials,
     )
     # We don't test type 5, because LIKE has very SQL specific examples
     for example in (
@@ -891,16 +821,14 @@ def test_metadata_filters_type1(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_relationship_index(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_relationship_index(neo4j_credentials: Neo4jCredentials) -> None:
     """Test end to end construction and search."""
     embeddings = FakeEmbeddingsWithOsDimension()
     docsearch = Neo4jVector.from_texts(
         texts=texts,
         embedding=embeddings,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     # Ingest data
     docsearch.query(
@@ -926,9 +854,7 @@ OPTIONS {indexConfig: {
     relationship_index = Neo4jVector.from_existing_relationship_index(
         embeddings,
         index_name="relationship",
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
+        **neo4j_credentials,
     )
 
     output = relationship_index.similarity_search("foo", k=1)
@@ -939,17 +865,15 @@ OPTIONS {indexConfig: {
 
 @pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4jvector_relationship_index_retrieval(
-    neo4j_credentials: Dict[str, str],
+    neo4j_credentials: Neo4jCredentials,
 ) -> None:
     """Test end to end construction and search."""
     embeddings = FakeEmbeddingsWithOsDimension()
     docsearch = Neo4jVector.from_texts(
         texts=texts,
         embedding=embeddings,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     # Ingest data
     docsearch.query(
@@ -980,9 +904,7 @@ OPTIONS {indexConfig: {
         embeddings,
         index_name="relationship",
         retrieval_query=retrieval_query,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
+        **neo4j_credentials,
     )
 
     output = relationship_index.similarity_search("foo", k=1)
@@ -992,7 +914,9 @@ OPTIONS {indexConfig: {
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_max_marginal_relevance_search(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_max_marginal_relevance_search(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
     """
     Test end to end construction and MMR search.
     The embedding function used here ensures `texts` become
@@ -1015,9 +939,7 @@ def test_neo4j_max_marginal_relevance_search(neo4j_credentials: Dict[str, str]) 
         metadatas=metadatas,
         embedding=AngularTwoDimensionalEmbeddings(),
         pre_delete_collection=True,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
+        **neo4j_credentials,
     )
 
     expected_set = {
@@ -1035,15 +957,15 @@ def test_neo4j_max_marginal_relevance_search(neo4j_credentials: Dict[str, str]) 
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_effective_search_ratio(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_effective_search_ratio(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
     """Test effective search parameter."""
     docsearch = Neo4jVector.from_texts(
         texts=texts,
         embedding=FakeEmbeddingsWithOsDimension(),
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
         pre_delete_collection=True,
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=2, effective_search_ratio=2)
     assert len(output) == 2
@@ -1058,13 +980,9 @@ def test_neo4jvector_effective_search_ratio(neo4j_credentials: Dict[str, str]) -
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4jvector_passing_graph_object(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4jvector_passing_graph_object(neo4j_credentials: Neo4jCredentials) -> None:
     """Test end to end construction and search with passing graph object."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Rewrite env vars to make sure it fails if env is used
     old_url = os.environ["NEO4J_URI"]
     os.environ["NEO4J_URI"] = "foo"
@@ -1073,9 +991,7 @@ def test_neo4jvector_passing_graph_object(neo4j_credentials: Dict[str, str]) -> 
         embedding=FakeEmbeddingsWithOsDimension(),
         graph=graph,
         pre_delete_collection=True,
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
+        **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
     assert output == [Document(page_content="foo")]

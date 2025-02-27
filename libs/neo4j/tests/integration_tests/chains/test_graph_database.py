@@ -1,6 +1,5 @@
 """Test Graph Database Chain."""
 
-from typing import Dict
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,17 +7,14 @@ from langchain_core.language_models import BaseLanguageModel
 
 from langchain_neo4j.chains.graph_qa.cypher import GraphCypherQAChain
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
+from tests.integration_tests.utils import Neo4jCredentials
 from tests.llms.fake_llm import FakeLLM
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_cypher_generating_run(neo4j_credentials: Dict[str, str]) -> None:
+def test_cypher_generating_run(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that Cypher statement is correctly generated and executed."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Create two nodes and a relationship
     graph.query(
         "CREATE (a:Actor {name:'Bruce Willis'})"
@@ -47,14 +43,10 @@ def test_cypher_generating_run(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_cypher_top_k(neo4j_credentials: Dict[str, str]) -> None:
+def test_cypher_top_k(neo4j_credentials: Neo4jCredentials) -> None:
     """Test top_k parameter correctly limits the number of results in the context."""
     TOP_K = 1
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship
@@ -84,13 +76,9 @@ def test_cypher_top_k(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_cypher_intermediate_steps(neo4j_credentials: Dict[str, str]) -> None:
+def test_cypher_intermediate_steps(neo4j_credentials: Neo4jCredentials) -> None:
     """Test the returning of the intermediate steps."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship
@@ -128,13 +116,9 @@ def test_cypher_intermediate_steps(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_cypher_return_direct(neo4j_credentials: Dict[str, str]) -> None:
+def test_cypher_return_direct(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that chain returns direct results."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship
@@ -163,13 +147,9 @@ def test_cypher_return_direct(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_function_response(neo4j_credentials: Dict[str, str]) -> None:
+def test_function_response(neo4j_credentials: Neo4jCredentials) -> None:
     """Test returning a function response."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship
@@ -200,13 +180,9 @@ def test_function_response(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_exclude_types(neo4j_credentials: Dict[str, str]) -> None:
+def test_exclude_types(neo4j_credentials: Neo4jCredentials) -> None:
     """Test exclude types from schema."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship
@@ -236,13 +212,9 @@ def test_exclude_types(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_include_types(neo4j_credentials: Dict[str, str]) -> None:
+def test_include_types(neo4j_credentials: Neo4jCredentials) -> None:
     """Test include types from schema."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship
@@ -273,13 +245,9 @@ def test_include_types(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_include_types2(neo4j_credentials: Dict[str, str]) -> None:
+def test_include_types2(neo4j_credentials: Neo4jCredentials) -> None:
     """Test include types from schema."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship

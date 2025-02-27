@@ -1,6 +1,5 @@
 import os
 import urllib
-from typing import Dict
 
 import pytest
 from langchain_core.documents import Document
@@ -13,6 +12,7 @@ from langchain_neo4j.graphs.neo4j_graph import (
     rel_properties_query,
     rel_query,
 )
+from tests.integration_tests.utils import Neo4jCredentials
 
 test_data = [
     GraphDocument(
@@ -45,13 +45,9 @@ test_data_backticks = [
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_connect_neo4j(neo4j_credentials: Dict[str, str]) -> None:
+def test_connect_neo4j(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that Neo4j database is correctly instantiated and connected."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
 
     output = graph.query('RETURN "test" AS output')
     expected_output = [{"output": "test"}]
@@ -72,13 +68,9 @@ def test_connect_neo4j_env() -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_cypher_return_correct_schema(neo4j_credentials: Dict[str, str]) -> None:
+def test_cypher_return_correct_schema(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that chain returns direct results."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship
@@ -135,14 +127,9 @@ def test_cypher_return_correct_schema(neo4j_credentials: Dict[str, str]) -> None
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_timeout(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_timeout(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that neo4j uses the timeout correctly."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        timeout=0.1,
-    )
+    graph = Neo4jGraph(timeout=0.1, **neo4j_credentials)
     try:
         graph.query("UNWIND range(0,100000,1) AS i MERGE (:Foo {id:i})")
     except Exception as e:
@@ -154,14 +141,9 @@ def test_neo4j_timeout(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_sanitize_values(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_sanitize_values(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that lists with more than 128 elements are removed from the results."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        sanitize=True,
-    )
+    graph = Neo4jGraph(sanitize=True, **neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Create two nodes and a relationship
@@ -181,14 +163,9 @@ def test_neo4j_sanitize_values(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_add_data(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_add_data(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that neo4j correctly import graph document."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        sanitize=True,
-    )
+    graph = Neo4jGraph(sanitize=True, **neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Remove all constraints
@@ -204,14 +181,9 @@ def test_neo4j_add_data(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_add_data_source(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_add_data_source(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that neo4j correctly import graph document with source."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        sanitize=True,
-    )
+    graph = Neo4jGraph(sanitize=True, **neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Remove all constraints
@@ -231,14 +203,9 @@ def test_neo4j_add_data_source(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_add_data_base(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_add_data_base(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that neo4j correctly import graph document with base_entity."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        sanitize=True,
-    )
+    graph = Neo4jGraph(sanitize=True, **neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Remove all constraints
@@ -258,14 +225,9 @@ def test_neo4j_add_data_base(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_add_data_base_source(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_add_data_base_source(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that neo4j correctly import graph document with base_entity and source."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        sanitize=True,
-    )
+    graph = Neo4jGraph(sanitize=True, **neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Remove all constraints
@@ -286,14 +248,9 @@ def test_neo4j_add_data_base_source(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_filtering_labels(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_filtering_labels(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that neo4j correctly filters excluded labels."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        sanitize=True,
-    )
+    graph = Neo4jGraph(sanitize=True, **neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
     # Remove all constraints
@@ -314,26 +271,18 @@ def test_neo4j_filtering_labels(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_driver_config(neo4j_credentials: Dict[str, str]) -> None:
+def test_driver_config(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that neo4j works with driver config."""
     graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        driver_config={"max_connection_pool_size": 1},
+        driver_config={"max_connection_pool_size": 1}, **neo4j_credentials
     )
     graph.query("RETURN 'foo'")
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_enhanced_schema(neo4j_credentials: Dict[str, str]) -> None:
+def test_enhanced_schema(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that neo4j works with driver config."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        enhanced_schema=True,
-    )
+    graph = Neo4jGraph(enhanced_schema=True, **neo4j_credentials)
     graph.query("MATCH (n) DETACH DELETE n")
     graph.add_graph_documents(test_data)
     graph.refresh_schema()
@@ -374,15 +323,9 @@ def test_enhanced_schema(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_enhanced_schema_exception(neo4j_credentials: Dict[str, str]) -> None:
+def test_enhanced_schema_exception(neo4j_credentials: Neo4jCredentials) -> None:
     """Test no error with weird schema."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-        enhanced_schema=True,
-        refresh_schema=False,
-    )
+    graph = Neo4jGraph(enhanced_schema=True, refresh_schema=False, **neo4j_credentials)
     graph.query("MATCH (n) DETACH DELETE n")
     graph.query(
         "CREATE (:Node {foo: 'bar'}), (:Node {foo: 1}), (:Node {foo: [1,2]}), "
@@ -414,13 +357,9 @@ def test_enhanced_schema_exception(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_backticks(neo4j_credentials: Dict[str, str]) -> None:
+def test_backticks(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that backticks are correctly removed."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     graph.query("MATCH (n) DETACH DELETE n")
     graph.add_graph_documents(test_data_backticks)
     nodes = graph.query("MATCH (n) RETURN labels(n) AS labels ORDER BY n.id")
@@ -433,13 +372,9 @@ def test_backticks(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_context_manager(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_context_manager(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that Neo4jGraph works correctly with context manager."""
-    with Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    ) as graph:
+    with Neo4jGraph(**neo4j_credentials) as graph:
         # Test that the connection is working
         graph.query("RETURN 1 as n")
 
@@ -452,13 +387,9 @@ def test_neo4j_context_manager(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_explicit_close(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_explicit_close(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that Neo4jGraph can be explicitly closed."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Test that the connection is working
     graph.query("RETURN 1 as n")
 
@@ -474,13 +405,9 @@ def test_neo4j_explicit_close(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_error_after_close(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_error_after_close(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that Neo4jGraph operations raise proper errors after closing."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     graph.query("RETURN 1")  # Should work
     graph.close()
 
@@ -507,18 +434,10 @@ def test_neo4j_error_after_close(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_concurrent_connections(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_concurrent_connections(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that multiple Neo4jGraph instances can be used independently."""
-    graph1 = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
-    graph2 = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph1 = Neo4jGraph(**neo4j_credentials)
+    graph2 = Neo4jGraph(**neo4j_credentials)
 
     # Both connections should work independently
     assert graph1.query("RETURN 1 as n") == [{"n": 1}]
@@ -537,18 +456,10 @@ def test_neo4j_concurrent_connections(neo4j_credentials: Dict[str, str]) -> None
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_nested_context_managers(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_nested_context_managers(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that nested context managers work correctly."""
-    with Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    ) as graph1:
-        with Neo4jGraph(
-            url=neo4j_credentials["url"],
-            username=neo4j_credentials["username"],
-            password=neo4j_credentials["password"],
-        ) as graph2:
+    with Neo4jGraph(**neo4j_credentials) as graph1:
+        with Neo4jGraph(**neo4j_credentials) as graph2:
             # Both connections should work
             assert graph1.query("RETURN 1 as n") == [{"n": 1}]
             assert graph2.query("RETURN 2 as n") == [{"n": 2}]
@@ -575,20 +486,16 @@ def test_neo4j_nested_context_managers(neo4j_credentials: Dict[str, str]) -> Non
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_neo4j_multiple_close(neo4j_credentials: Dict[str, str]) -> None:
+def test_neo4j_multiple_close(neo4j_credentials: Neo4jCredentials) -> None:
     """Test that Neo4jGraph can be closed multiple times without error."""
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        username=neo4j_credentials["username"],
-        password=neo4j_credentials["password"],
-    )
+    graph = Neo4jGraph(**neo4j_credentials)
     # Test that multiple closes don't raise errors
     graph.close()
     graph.close()  # This should not raise an error
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_invalid_url(neo4j_credentials: Dict[str, str]) -> None:
+def test_invalid_url(neo4j_credentials: Neo4jCredentials) -> None:
     """Test initializing with invalid credentials raises ValueError."""
     # Parse the original URL
     parsed_url = urllib.parse.urlparse(neo4j_credentials["url"])
@@ -610,7 +517,7 @@ def test_invalid_url(neo4j_credentials: Dict[str, str]) -> None:
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
-def test_invalid_credentials(neo4j_credentials: Dict[str, str]) -> None:
+def test_invalid_credentials(neo4j_credentials: Neo4jCredentials) -> None:
     """Test initializing with invalid credentials raises ValueError."""
 
     with pytest.raises(ValueError) as exc_info:
