@@ -21,7 +21,6 @@ from langchain_core.prompts import (
 from langchain_neo4j.chains.graph_qa.cypher import (
     GraphCypherQAChain,
     construct_schema,
-    extract_cypher,
     get_function_response,
 )
 from langchain_neo4j.chains.graph_qa.cypher_utils import (
@@ -47,6 +46,11 @@ class FakeGraphStore:
     def get_structured_schema(self) -> Dict[str, Any]:
         """Returns the schema of the Graph database"""
         return {}
+
+    @property
+    def _enhanced_schema(self) -> bool:
+        """Whether the schema is enhanced"""
+        return False
 
     def query(self, query: str, params: dict = {}) -> List[Dict[str, Any]]:
         """Query the graph."""
@@ -276,18 +280,18 @@ def test_graph_cypher_qa_chain() -> None:
     readonlymemory = ReadOnlySharedMemory(memory=memory)
     prompt1 = (
         "You are a nice chatbot having a conversation with a human.\n\n    "
-        "Schema:\n    Node properties are the following:\n\nRelationship "
-        "properties are the following:\n\nThe relationships are the "
-        "following:\n\n\n    "
+        "Schema:\n    Node properties:\n\nRelationship "
+        "properties:\n\nThe relationships"
+        ":\n\n\n    "
         "Previous conversation:\n    \n\n    New human question: "
         "Test question\n    Response:"
     )
 
     prompt2 = (
         "You are a nice chatbot having a conversation with a human.\n\n    "
-        "Schema:\n    Node properties are the following:\n\nRelationship "
-        "properties are the following:\n\nThe relationships are the "
-        "following:\n\n\n    "
+        "Schema:\n    Node properties:\n\nRelationship "
+        "properties:\n\nThe relationships"
+        ":\n\n\n    "
         "Previous conversation:\n    Human: Test question\nAI: foo\n\n    "
         "New human question: Test new question\n    Response:"
     )
@@ -323,45 +327,6 @@ def test_cypher_generation_failure() -> None:
     assert response == []
 
 
-def test_extract_cypher_on_no_backticks() -> None:
-    """Test if there are no backticks, so the original text should be returned."""
-    query = "MATCH (n) RETURN n"
-    output = extract_cypher(query)
-    assert output == query
-
-
-def test_extract_cypher_on_backticks() -> None:
-    """Test if there are backticks. Query from within backticks should be returned."""
-    query = "You can use the following query: ```MATCH (n) RETURN n```"
-    expected_output = "MATCH (n) RETURN n"
-    output = extract_cypher(query)
-    assert output == expected_output
-
-
-def test_extract_cypher_on_label_with_spaces() -> None:
-    """Test if node labels with spaces are quoted."""
-    query = "```MATCH (n:Label With Space) RETURN n```"
-    expected_output = "MATCH (n:'Label With Space') RETURN n"
-    output = extract_cypher(query)
-    assert output == expected_output
-
-
-def test_extract_cypher_on_label_with_multi_spaces() -> None:
-    """Test if node labels with multiple spaces are quoted."""
-    query = "```MATCH (n:Label With    Space) RETURN n```"
-    expected_output = "MATCH (n:'Label With    Space') RETURN n"
-    output = extract_cypher(query)
-    assert output == expected_output
-
-
-def test_extract_cypher_on_label_without_spaces() -> None:
-    """Test if node labels without spaces are not quoted."""
-    query = "```MATCH (n:LabelWithoutSpace) RETURN n```"
-    expected_output = "MATCH (n:LabelWithoutSpace) RETURN n"
-    output = extract_cypher(query)
-    assert output == expected_output
-
-
 def test_exclude_types() -> None:
     structured_schema = {
         "node_props": {
@@ -376,13 +341,14 @@ def test_exclude_types() -> None:
         ],
     }
     exclude_types = ["Person", "DIRECTED"]
-    output = construct_schema(structured_schema, [], exclude_types)
+    output = construct_schema(structured_schema, [], exclude_types, False)
     expected_schema = (
-        "Node properties are the following:\n"
-        "Movie {title: STRING},Actor {name: STRING}\n"
-        "Relationship properties are the following:\n"
+        "Node properties:\n"
+        "Movie {title: STRING}\n"
+        "Actor {name: STRING}\n"
+        "Relationship properties:\n"
         "ACTED_IN {role: STRING}\n"
-        "The relationships are the following:\n"
+        "The relationships:\n"
         "(:Actor)-[:ACTED_IN]->(:Movie)"
     )
     assert output == expected_schema
@@ -402,13 +368,14 @@ def test_include_types() -> None:
         ],
     }
     include_types = ["Movie", "Actor", "ACTED_IN"]
-    output = construct_schema(structured_schema, include_types, [])
+    output = construct_schema(structured_schema, include_types, [], False)
     expected_schema = (
-        "Node properties are the following:\n"
-        "Movie {title: STRING},Actor {name: STRING}\n"
-        "Relationship properties are the following:\n"
+        "Node properties:\n"
+        "Movie {title: STRING}\n"
+        "Actor {name: STRING}\n"
+        "Relationship properties:\n"
         "ACTED_IN {role: STRING}\n"
-        "The relationships are the following:\n"
+        "The relationships:\n"
         "(:Actor)-[:ACTED_IN]->(:Movie)"
     )
     assert output == expected_schema
@@ -428,12 +395,13 @@ def test_include_types2() -> None:
         ],
     }
     include_types = ["Movie", "Actor"]
-    output = construct_schema(structured_schema, include_types, [])
+    output = construct_schema(structured_schema, include_types, [], False)
     expected_schema = (
-        "Node properties are the following:\n"
-        "Movie {title: STRING},Actor {name: STRING}\n"
-        "Relationship properties are the following:\n\n"
-        "The relationships are the following:\n"
+        "Node properties:\n"
+        "Movie {title: STRING}\n"
+        "Actor {name: STRING}\n"
+        "Relationship properties:\n\n"
+        "The relationships:\n"
     )
     assert output == expected_schema
 
@@ -452,13 +420,14 @@ def test_include_types3() -> None:
         ],
     }
     include_types = ["Movie", "Actor", "ACTED_IN"]
-    output = construct_schema(structured_schema, include_types, [])
+    output = construct_schema(structured_schema, include_types, [], False)
     expected_schema = (
-        "Node properties are the following:\n"
-        "Movie {title: STRING},Actor {name: STRING}\n"
-        "Relationship properties are the following:\n"
+        "Node properties:\n"
+        "Movie {title: STRING}\n"
+        "Actor {name: STRING}\n"
+        "Relationship properties:\n"
         "ACTED_IN {role: STRING}\n"
-        "The relationships are the following:\n"
+        "The relationships:\n"
         "(:Actor)-[:ACTED_IN]->(:Movie)"
     )
     assert output == expected_schema

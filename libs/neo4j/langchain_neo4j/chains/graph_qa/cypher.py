@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import re
 from typing import Any, Dict, List, Optional, Union
 
 from langchain.chains.base import Chain
@@ -22,6 +21,8 @@ from langchain_core.prompts import (
     MessagesPlaceholder,
 )
 from langchain_core.runnables import Runnable
+from neo4j_graphrag.retrievers.text2cypher import extract_cypher
+from neo4j_graphrag.schema import format_schema
 from pydantic import Field
 
 from langchain_neo4j.chains.graph_qa.cypher_utils import (
@@ -43,40 +44,11 @@ very concise style in interpreting results!
 """
 
 
-def extract_cypher(text: str) -> str:
-    """Extract Cypher code from a text.
-
-    Args:
-        text: Text to extract Cypher code from.
-
-    Returns:
-        Cypher code extracted from the text.
-    """
-    # The pattern to find Cypher code enclosed in triple backticks
-    pattern = r"```(.*?)```"
-
-    # Find all matches in the input text
-    matches = re.findall(pattern, text, re.DOTALL)
-    if matches:
-        cypher_query = matches[0]
-    else:
-        return text
-
-    # Remove backticks
-    cypher_query = cypher_query.replace("`", "")
-
-    # Quote node labels if they contain spaces
-    cypher_query = re.sub(
-        r":\s*(\s*)([a-zA-Z0-9_]+(?:\s+[a-zA-Z0-9_]+)+)(\s*)", r":'\2'", cypher_query
-    )
-
-    return cypher_query
-
-
 def construct_schema(
     structured_schema: Dict[str, Any],
     include_types: List[str],
     exclude_types: List[str],
+    is_enhanced: bool,
 ) -> str:
     """Filter the schema based on included or excluded types"""
 
@@ -100,39 +72,7 @@ def construct_schema(
             if all(filter_func(r[t]) for t in ["start", "end", "type"])
         ],
     }
-
-    # Format node properties
-    formatted_node_props = []
-    for label, properties in filtered_schema["node_props"].items():
-        props_str = ", ".join(
-            [f"{prop['property']}: {prop['type']}" for prop in properties]
-        )
-        formatted_node_props.append(f"{label} {{{props_str}}}")
-
-    # Format relationship properties
-    formatted_rel_props = []
-    for rel_type, properties in filtered_schema["rel_props"].items():
-        props_str = ", ".join(
-            [f"{prop['property']}: {prop['type']}" for prop in properties]
-        )
-        formatted_rel_props.append(f"{rel_type} {{{props_str}}}")
-
-    # Format relationships
-    formatted_rels = [
-        f"(:{el['start']})-[:{el['type']}]->(:{el['end']})"
-        for el in filtered_schema["relationships"]
-    ]
-
-    return "\n".join(
-        [
-            "Node properties are the following:",
-            ",".join(formatted_node_props),
-            "Relationship properties are the following:",
-            ",".join(formatted_rel_props),
-            "The relationships are the following:",
-            ",".join(formatted_rels),
-        ]
-    )
+    return format_schema(filtered_schema, is_enhanced)
 
 
 def get_function_response(
@@ -350,15 +290,19 @@ class GraphCypherQAChain(Chain):
                 "Either `exclude_types` or `include_types` "
                 "can be provided, but not both"
             )
+        graph = kwargs["graph"]
         graph_schema = construct_schema(
-            kwargs["graph"].get_structured_schema, include_types, exclude_types
+            graph.get_structured_schema,
+            include_types,
+            exclude_types,
+            graph._enhanced_schema,
         )
 
         cypher_query_corrector = None
         if validate_cypher:
             corrector_schema = [
                 Schema(el["start"], el["type"], el["end"])
-                for el in kwargs["graph"].get_structured_schema.get("relationships", [])
+                for el in graph.get_structured_schema.get("relationships", [])
             ]
             cypher_query_corrector = CypherQueryCorrector(corrector_schema)
 
