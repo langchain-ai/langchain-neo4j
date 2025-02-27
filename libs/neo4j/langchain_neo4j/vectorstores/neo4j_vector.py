@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import enum
 import logging
 import os
 from hashlib import md5
@@ -8,8 +7,10 @@ from typing import (
     Any,
     Callable,
     Dict,
+    Final,
     Iterable,
     List,
+    Literal,
     Optional,
     Tuple,
     Type,
@@ -22,108 +23,32 @@ from langchain_core.embeddings import Embeddings
 from langchain_core.utils import get_from_dict_or_env
 from langchain_core.vectorstores import VectorStore
 from langchain_core.vectorstores.utils import maximal_marginal_relevance
+from neo4j_graphrag.indexes import (
+    create_fulltext_index,
+    create_vector_index,
+    retrieve_fulltext_index_info,
+    retrieve_vector_index_info,
+)
+from neo4j_graphrag.neo4j_queries import get_search_query
+from neo4j_graphrag.types import EntityType as IndexType
+from neo4j_graphrag.types import SearchType
+from neo4j_graphrag.utils.version_utils import (
+    get_version,
+    has_metadata_filtering_support,
+    has_vector_index_support,
+    is_version_5_23_or_above,
+)
 
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
 from langchain_neo4j.vectorstores.utils import DistanceStrategy
 
 DEFAULT_DISTANCE_STRATEGY = DistanceStrategy.COSINE
-DISTANCE_MAPPING = {
+DISTANCE_MAPPING: Final[dict[DistanceStrategy, Literal["euclidean", "cosine"]]] = {
     DistanceStrategy.EUCLIDEAN_DISTANCE: "euclidean",
     DistanceStrategy.COSINE: "cosine",
 }
-
-COMPARISONS_TO_NATIVE = {
-    "$eq": "=",
-    "$ne": "<>",
-    "$lt": "<",
-    "$lte": "<=",
-    "$gt": ">",
-    "$gte": ">=",
-}
-
-SPECIAL_CASED_OPERATORS = {
-    "$in",
-    "$nin",
-    "$between",
-}
-
-TEXT_OPERATORS = {
-    "$like",
-    "$ilike",
-}
-
-LOGICAL_OPERATORS = {"$and", "$or"}
-
-SUPPORTED_OPERATORS = (
-    set(COMPARISONS_TO_NATIVE)
-    .union(TEXT_OPERATORS)
-    .union(LOGICAL_OPERATORS)
-    .union(SPECIAL_CASED_OPERATORS)
-)
-
-
-class SearchType(str, enum.Enum):
-    """Enumerator of the Distance strategies."""
-
-    VECTOR = "vector"
-    HYBRID = "hybrid"
-
-
 DEFAULT_SEARCH_TYPE = SearchType.VECTOR
-
-
-class IndexType(str, enum.Enum):
-    """Enumerator of the index types."""
-
-    NODE = "NODE"
-    RELATIONSHIP = "RELATIONSHIP"
-
-
 DEFAULT_INDEX_TYPE = IndexType.NODE
-
-
-def _get_search_index_query(
-    search_type: SearchType,
-    index_type: IndexType = DEFAULT_INDEX_TYPE,
-    neo4j_version_is_5_23_or_above: bool = False,
-) -> str:
-    if index_type == IndexType.NODE:
-        if search_type == SearchType.VECTOR:
-            return (
-                "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
-                "YIELD node, score "
-                "WITH node, score LIMIT $k "
-            )
-        elif search_type == SearchType.HYBRID:
-            call_prefix = "CALL () { " if neo4j_version_is_5_23_or_above else "CALL { "
-
-            query_body = (
-                "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
-                "YIELD node, score "
-                "WITH node, score LIMIT $k "
-                "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-                "UNWIND nodes AS n "
-                "RETURN n.node AS node, (n.score / max) AS score UNION "
-                "CALL db.index.fulltext.queryNodes($keyword_index, $query, "
-                "{limit: $k}) YIELD node, score "
-                "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-                "UNWIND nodes AS n "
-                "RETURN n.node AS node, (n.score / max) AS score "
-            )
-
-            call_suffix = (
-                "} WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
-            )
-
-            return call_prefix + query_body + call_suffix
-        else:
-            raise ValueError(f"Unsupported SearchType: {search_type}")
-    else:
-        return (
-            "CALL db.index.vector.queryRelationships($index, $k * $ef, $embedding) "
-            "YIELD relationship, score "
-            "WITH relationship, score LIMIT $k "
-        )
 
 
 def check_if_not_null(props: List[str], values: List[Any]) -> None:
@@ -131,13 +56,6 @@ def check_if_not_null(props: List[str], values: List[Any]) -> None:
     for prop, value in zip(props, values):
         if not value:
             raise ValueError(f"Parameter `{prop}` must not be None or empty string")
-
-
-def sort_by_index_name(
-    lst: List[Dict[str, Any]], index_name: str
-) -> List[Dict[str, Any]]:
-    """Sort first element to match the index_name if exists"""
-    return sorted(lst, key=lambda x: x.get("name") != index_name)
 
 
 def remove_lucene_chars(text: str) -> str:
@@ -192,250 +110,6 @@ def dict_to_yaml_str(input_dict: Dict, indent: int = 0) -> str:
         else:
             yaml_str += f"{padding}{key}: {value}\n"
     return yaml_str
-
-
-def combine_queries(
-    input_queries: List[Tuple[str, Dict[str, Any]]], operator: str
-) -> Tuple[str, Dict[str, Any]]:
-    """Combine multiple queries with an operator."""
-
-    # Initialize variables to hold the combined query and parameters
-    combined_query: str = ""
-    combined_params: Dict = {}
-    param_counter: Dict = {}
-
-    for query, params in input_queries:
-        # Process each query fragment and its parameters
-        new_query = query
-        for param, value in params.items():
-            # Update the parameter name to ensure uniqueness
-            if param in param_counter:
-                param_counter[param] += 1
-            else:
-                param_counter[param] = 1
-            new_param_name = f"{param}_{param_counter[param]}"
-
-            # Replace the parameter in the query fragment
-            new_query = new_query.replace(f"${param}", f"${new_param_name}")
-            # Add the parameter to the combined parameters dictionary
-            combined_params[new_param_name] = value
-
-        # Combine the query fragments with an AND operator
-        if combined_query:
-            combined_query += f" {operator} "
-        combined_query += f"({new_query})"
-
-    return combined_query, combined_params
-
-
-def collect_params(
-    input_data: List[Tuple[str, Dict[str, str]]],
-) -> Tuple[List[str], Dict[str, Any]]:
-    """Transform the input data into the desired format.
-
-    Args:
-    - input_data (list of tuples): Input data to transform.
-      Each tuple contains a string and a dictionary.
-
-    Returns:
-    - tuple: A tuple containing a list of strings and a dictionary.
-    """
-    # Initialize variables to hold the output parts
-    query_parts = []
-    params = {}
-
-    # Loop through each item in the input data
-    for query_part, param in input_data:
-        # Append the query part to the list
-        query_parts.append(query_part)
-        # Update the params dictionary with the param dictionary
-        params.update(param)
-
-    # Return the transformed data
-    return (query_parts, params)
-
-
-def _handle_field_filter(
-    field: str, value: Any, param_number: int = 1
-) -> Tuple[str, Dict]:
-    """Create a filter for a specific field.
-
-    Args:
-        field: name of field
-        value: value to filter
-            If provided as is then this will be an equality filter
-            If provided as a dictionary then this will be a filter, the key
-            will be the operator and the value will be the value to filter by
-        param_number: sequence number of parameters used to map between param
-           dict and Cypher snippet
-
-    Returns a tuple of
-        - Cypher filter snippet
-        - Dictionary with parameters used in filter snippet
-    """
-    if not isinstance(field, str):
-        raise ValueError(
-            f"field should be a string but got: {type(field)} with value: {field}"
-        )
-
-    if field.startswith("$"):
-        raise ValueError(
-            f"Invalid filter condition. Expected a field but got an operator: "
-            f"{field}"
-        )
-
-    # Allow [a-zA-Z0-9_], disallow $ for now until we support escape characters
-    if not field.isidentifier():
-        raise ValueError(f"Invalid field name: {field}. Expected a valid identifier.")
-
-    if isinstance(value, dict):
-        # This is a filter specification
-        if len(value) != 1:
-            raise ValueError(
-                "Invalid filter condition. Expected a value which "
-                "is a dictionary with a single key that corresponds to an operator "
-                f"but got a dictionary with {len(value)} keys. The first few "
-                f"keys are: {list(value.keys())[:3]}"
-            )
-        operator, filter_value = list(value.items())[0]
-        # Verify that that operator is an operator
-        if operator not in SUPPORTED_OPERATORS:
-            raise ValueError(
-                f"Invalid operator: {operator}. "
-                f"Expected one of {SUPPORTED_OPERATORS}"
-            )
-    else:  # Then we assume an equality operator
-        operator = "$eq"
-        filter_value = value
-
-    if operator in COMPARISONS_TO_NATIVE:
-        # Then we implement an equality filter
-        # native is trusted input
-        native = COMPARISONS_TO_NATIVE[operator]
-        query_snippet = f"n.`{field}` {native} $param_{param_number}"
-        query_param = {f"param_{param_number}": filter_value}
-        return (query_snippet, query_param)
-    elif operator == "$between":
-        low, high = filter_value
-        query_snippet = (
-            f"$param_{param_number}_low <= n.`{field}` <= $param_{param_number}_high"
-        )
-        query_param = {
-            f"param_{param_number}_low": low,
-            f"param_{param_number}_high": high,
-        }
-        return (query_snippet, query_param)
-
-    elif operator in {"$in", "$nin", "$like", "$ilike"}:
-        # We'll do force coercion to text
-        if operator in {"$in", "$nin"}:
-            for val in filter_value:
-                if not isinstance(val, (str, int, float)):
-                    raise NotImplementedError(
-                        f"Unsupported type: {type(val)} for value: {val}"
-                    )
-        if operator in {"$in"}:
-            query_snippet = f"n.`{field}` IN $param_{param_number}"
-            query_param = {f"param_{param_number}": filter_value}
-            return (query_snippet, query_param)
-        elif operator in {"$nin"}:
-            query_snippet = f"n.`{field}` NOT IN $param_{param_number}"
-            query_param = {f"param_{param_number}": filter_value}
-            return (query_snippet, query_param)
-        elif operator in {"$like"}:
-            query_snippet = f"n.`{field}` CONTAINS $param_{param_number}"
-            query_param = {f"param_{param_number}": filter_value.rstrip("%")}
-            return (query_snippet, query_param)
-        elif operator in {"$ilike"}:
-            query_snippet = f"toLower(n.`{field}`) CONTAINS $param_{param_number}"
-            query_param = {f"param_{param_number}": filter_value.rstrip("%")}
-            return (query_snippet, query_param)
-    else:
-        raise NotImplementedError()
-
-    raise NotImplementedError("Unhandled operator")
-
-
-def construct_metadata_filter(filter: Dict[str, Any]) -> Tuple[str, Dict]:
-    """Construct a metadata filter.
-
-    Args:
-        filter: A dictionary representing the filter condition.
-
-    Returns:
-        Tuple[str, Dict]
-    """
-
-    if isinstance(filter, dict):
-        if len(filter) == 1:
-            # The only operators allowed at the top level are $AND and $OR
-            # First check if an operator or a field
-            key, value = list(filter.items())[0]
-            if key.startswith("$"):
-                # Then it's an operator
-                if key.lower() not in ["$and", "$or"]:
-                    raise ValueError(
-                        f"Invalid filter condition. Expected $and or $or "
-                        f"but got: {key}"
-                    )
-            else:
-                # Then it's a field
-                return _handle_field_filter(key, filter[key])
-
-            # Here we handle the $and and $or operators
-            if not isinstance(value, list):
-                raise ValueError(
-                    f"Expected a list, but got {type(value)} for value: {value}"
-                )
-            if key.lower() == "$and":
-                and_ = combine_queries(
-                    [construct_metadata_filter(el) for el in value], "AND"
-                )
-                if len(and_[0]) >= 1:
-                    return and_
-                else:
-                    raise ValueError(
-                        "Invalid filter condition. Expected a dictionary "
-                        "but got an empty dictionary"
-                    )
-            elif key.lower() == "$or":
-                or_ = combine_queries(
-                    [construct_metadata_filter(el) for el in value], "OR"
-                )
-                if len(or_[0]) >= 1:
-                    return or_
-                else:
-                    raise ValueError(
-                        "Invalid filter condition. Expected a dictionary "
-                        "but got an empty dictionary"
-                    )
-            else:
-                raise ValueError(
-                    f"Invalid filter condition. Expected $and or $or " f"but got: {key}"
-                )
-        elif len(filter) > 1:
-            # Then all keys have to be fields (they cannot be operators)
-            for key in filter.keys():
-                if key.startswith("$"):
-                    raise ValueError(
-                        f"Invalid filter condition. Expected a field but got: {key}"
-                    )
-            # These should all be fields and combined using an $and operator
-            and_multiple = collect_params(
-                [
-                    _handle_field_filter(k, v, index)
-                    for index, (k, v) in enumerate(filter.items())
-                ]
-            )
-            if len(and_multiple[0]) >= 1:
-                return " AND ".join(and_multiple[0]), and_multiple[1]
-            else:
-                raise ValueError(
-                    "Invalid filter condition. Expected a dictionary "
-                    "but got an empty dictionary"
-                )
-        else:
-            raise ValueError("Got an empty dictionary for filters.")
 
 
 class Neo4jVector(VectorStore):
@@ -610,18 +284,14 @@ class Neo4jVector(VectorStore):
 
     def _build_delete_query(self) -> str:
         if self.neo4j_version_is_5_23_or_above:
-            query = (
-                f"MATCH (n:`{self.node_label}`) "
-                "CALL (n) { DETACH DELETE n } "
-                "IN TRANSACTIONS OF 10000 ROWS;"
-            )
+            call_prefix = "CALL (n) {"
         else:
-            query = (
-                f"MATCH (n:`{self.node_label}`) "
-                "CALL { WITH n DETACH DELETE n } "
-                "IN TRANSACTIONS OF 10000 ROWS;"
-            )
-        return query
+            call_prefix = "CALL { WITH n"
+        return (
+            f"MATCH (n:`{self.node_label}`) "
+            f"{call_prefix} DETACH DELETE n "
+            "} IN TRANSACTIONS OF 10000 ROWS;"
+        )
 
     def query(
         self,
@@ -682,42 +352,20 @@ class Neo4jVector(VectorStore):
         indexing. Raises a ValueError if the connected Neo4j version is
         not supported.
         """
-        db_data = self.query("CALL dbms.components()")
-        version = db_data[0]["versions"][0]
-        if "aura" in version:
-            version_tuple = tuple(map(int, version.split("-")[0].split("."))) + (0,)
-        else:
-            version_tuple = tuple(map(int, version.split(".")))
-
-        self.neo4j_version_is_5_23_or_above = self._check_if_version_5_23_or_above(
-            version_tuple
+        version_tuple, is_aura, is_enterprise = get_version(
+            self._driver, self._database
+        )
+        self._is_enterprise = is_enterprise
+        self.neo4j_version_is_5_23_or_above = is_version_5_23_or_above(version_tuple)
+        if not has_vector_index_support(version_tuple):
+            raise ValueError(
+                "Vector index is only supported in Neo4j version 5.11 or greater"
+            )
+        self.support_metadata_filter = has_metadata_filtering_support(
+            version_tuple, is_aura
         )
 
-        target_version = (5, 11, 0)
-
-        if version_tuple < target_version:
-            raise ValueError(
-                "Version index is only supported in Neo4j version 5.11 or greater"
-            )
-
-        # Flag for metadata filtering
-        metadata_target_version = (5, 18, 0)
-        if version_tuple < metadata_target_version:
-            self.support_metadata_filter = False
-        else:
-            self.support_metadata_filter = True
-        # Flag for enterprise
-        self._is_enterprise = True if db_data[0]["edition"] == "enterprise" else False
-
-    def _check_if_version_5_23_or_above(self, version_tuple: tuple[int, ...]) -> bool:
-        """
-        Check if the connected Neo4j database version supports the required features.
-
-        Sets a flag if the connected Neo4j version is 5.23 or above.
-        """
-        return version_tuple >= (5, 23, 0)
-
-    def retrieve_existing_index(self) -> Tuple[Optional[int], Optional[str]]:
+    def retrieve_existing_index(self) -> Optional[Tuple[Optional[int], str]]:
         """
         Check if the vector index exists in the Neo4j database
         and returns its embedding dimension.
@@ -730,34 +378,27 @@ class Neo4jVector(VectorStore):
         Returns:
             int or None: The embedding dimension of the existing index if found.
         """
-
-        index_information = self.query(
-            "SHOW INDEXES YIELD name, type, entityType, labelsOrTypes, "
-            "properties, options WHERE type = 'VECTOR' AND (name = $index_name "
-            "OR (labelsOrTypes[0] = $node_label AND "
-            "properties[0] = $embedding_node_property)) "
-            "RETURN name, entityType, labelsOrTypes, properties, options ",
-            params={
-                "index_name": self.index_name,
-                "node_label": self.node_label,
-                "embedding_node_property": self.embedding_node_property,
-            },
+        index_information = retrieve_vector_index_info(
+            driver=self._driver,
+            index_name=self.index_name,
+            label_or_type=self.node_label,
+            embedding_property=self.embedding_node_property,
         )
-        # sort by index_name
-        index_information = sort_by_index_name(index_information, self.index_name)
-        try:
-            self.index_name = index_information[0]["name"]
-            self.node_label = index_information[0]["labelsOrTypes"][0]
-            self.embedding_node_property = index_information[0]["properties"][0]
-            self._index_type = index_information[0]["entityType"]
-            embedding_dimension = None
-            index_config = index_information[0]["options"]["indexConfig"]
-            if "vector.dimensions" in index_config:
-                embedding_dimension = index_config["vector.dimensions"]
-
-            return embedding_dimension, index_information[0]["entityType"]
-        except IndexError:
-            return None, None
+        if index_information:
+            try:
+                self.index_name = index_information["name"]
+                self.node_label = index_information["labelsOrTypes"][0]
+                self.embedding_node_property = index_information["properties"][0]
+                self._index_type = index_information["entityType"]
+                embedding_dimension = None
+                index_config = index_information["options"]["indexConfig"]
+                if "vector.dimensions" in index_config:
+                    embedding_dimension = index_config["vector.dimensions"]
+                return embedding_dimension, index_information["entityType"]
+            except IndexError:
+                return None
+        else:
+            return None
 
     def retrieve_existing_fts_index(
         self, text_node_properties: List[str] = []
@@ -771,27 +412,24 @@ class Neo4jVector(VectorStore):
         Returns:
             (Tuple): keyword index information
         """
-
-        index_information = self.query(
-            "SHOW INDEXES YIELD name, type, labelsOrTypes, properties, options "
-            "WHERE type = 'FULLTEXT' AND (name = $keyword_index_name "
-            "OR (labelsOrTypes = [$node_label] AND "
-            "properties = $text_node_property)) "
-            "RETURN name, labelsOrTypes, properties, options ",
-            params={
-                "keyword_index_name": self.keyword_index_name,
-                "node_label": self.node_label,
-                "text_node_property": text_node_properties or [self.text_node_property],
-            },
-        )
-        # sort by index_name
-        index_information = sort_by_index_name(index_information, self.index_name)
-        try:
-            self.keyword_index_name = index_information[0]["name"]
-            self.text_node_property = index_information[0]["properties"][0]
-            node_label = index_information[0]["labelsOrTypes"][0]
-            return node_label
-        except IndexError:
+        if self.keyword_index_name:
+            index_information = retrieve_fulltext_index_info(
+                driver=self._driver,
+                index_name=self.keyword_index_name,
+                label_or_type=self.node_label,
+                text_properties=text_node_properties or [self.text_node_property],
+            )
+        else:
+            raise ValueError("keyword_index_name is not set.")
+        if index_information:
+            try:
+                self.keyword_index_name = index_information["name"]
+                self.text_node_property = index_information["properties"][0]
+                node_label = index_information["labelsOrTypes"][0]
+                return node_label
+            except IndexError:
+                return None
+        else:
             return None
 
     def create_new_index(self) -> None:
@@ -799,32 +437,34 @@ class Neo4jVector(VectorStore):
         This method constructs a Cypher query and executes it
         to create a new vector index in Neo4j.
         """
-        index_query = (
-            f"CREATE VECTOR INDEX {self.index_name} IF NOT EXISTS "
-            f"FOR (m:`{self.node_label}`) ON m.`{self.embedding_node_property}` "
-            "OPTIONS { indexConfig: { "
-            "`vector.dimensions`: toInteger($embedding_dimension), "
-            "`vector.similarity_function`: $similarity_metric }}"
+        similarity_fn = DISTANCE_MAPPING[self._distance_strategy]
+        create_vector_index(
+            driver=self._driver,
+            name=self.index_name,
+            label=self.node_label,
+            embedding_property=self.embedding_node_property,
+            dimensions=self.embedding_dimension,
+            similarity_fn=similarity_fn,
+            fail_if_exists=False,
+            neo4j_database=self._database,
         )
-
-        parameters = {
-            "embedding_dimension": self.embedding_dimension,
-            "similarity_metric": DISTANCE_MAPPING[self._distance_strategy],
-        }
-        self.query(index_query, params=parameters)
 
     def create_new_keyword_index(self, text_node_properties: List[str] = []) -> None:
         """
         This method constructs a Cypher query and executes it
         to create a new full text index in Neo4j.
         """
-        node_props = text_node_properties or [self.text_node_property]
-        fts_index_query = (
-            f"CREATE FULLTEXT INDEX {self.keyword_index_name} "
-            f"FOR (n:`{self.node_label}`) ON EACH "
-            f"[{', '.join(['n.`' + el + '`' for el in node_props])}]"
-        )
-        self.query(fts_index_query)
+        if self.keyword_index_name:
+            create_fulltext_index(
+                driver=self._driver,
+                name=self.keyword_index_name,
+                label=self.node_label,
+                node_properties=text_node_properties or [self.text_node_property],
+                fail_if_exists=False,
+                neo4j_database=self._database,
+            )
+        else:
+            raise ValueError("keyword_index_name is not set.")
 
     @property
     def embeddings(self) -> Embeddings:
@@ -853,8 +493,14 @@ class Neo4jVector(VectorStore):
             search_type=search_type,
             **kwargs,
         )
+
         # Check if the vector index already exists
-        embedding_dimension, index_type = store.retrieve_existing_index()
+        existing_index_info = store.retrieve_existing_index()
+        if existing_index_info:
+            embedding_dimension, index_type = existing_index_info
+        else:
+            embedding_dimension = None
+            index_type = None
 
         # Raise error if relationship index type
         if index_type == "RELATIONSHIP":
@@ -1095,87 +741,48 @@ class Neo4jVector(VectorStore):
             List[Tuple[Document, float]]: A list of tuples, each containing
                                 a Document object and its similarity score.
         """
-        if filter:
-            # Verify that 5.18 or later is used
-            if not self.support_metadata_filter:
-                raise ValueError(
-                    "Metadata filtering is only supported in "
-                    "Neo4j version 5.18 or greater"
-                )
-            # Metadata filtering and hybrid doesn't work
-            if self.search_type == SearchType.HYBRID:
-                raise ValueError(
-                    "Metadata filtering can't be use in combination with "
-                    "a hybrid search approach"
-                )
-            parallel_query = (
-                "CYPHER runtime = parallel parallelRuntimeSupport=all "
-                if self._is_enterprise
-                else ""
+        if filter and not self.support_metadata_filter:
+            raise ValueError(
+                "Metadata filtering is only supported in "
+                "Neo4j version 5.18 or greater"
             )
-            base_index_query = parallel_query + (
-                f"MATCH (n:`{self.node_label}`) WHERE "
-                f"n.`{self.embedding_node_property}` IS NOT NULL AND "
-                f"size(n.`{self.embedding_node_property}`) = "
-                f"toInteger({self.embedding_dimension}) AND "
+        entity_prefix = (
+            "relationship" if self._index_type == IndexType.RELATIONSHIP else "node"
+        )
+        default_retrieval = (
+            f"RETURN {entity_prefix}.`{self.text_node_property}` AS text, score, "
+            f"{entity_prefix} "
+            "{.*, "
+            f"`{self.text_node_property}`: Null, "
+            f"`{self.embedding_node_property}`: Null, id: Null "
+        )
+        if kwargs.get("return_embeddings"):
+            default_retrieval += (
+                f", _embedding_: {entity_prefix}.`{self.embedding_node_property}` "
             )
-            base_cosine_query = (
-                " WITH n as node, vector.similarity.cosine("
-                f"n.`{self.embedding_node_property}`, "
-                "$embedding) AS score ORDER BY score DESC LIMIT toInteger($k) "
-            )
-            filter_snippets, filter_params = construct_metadata_filter(filter)
-            index_query = base_index_query + filter_snippets + base_cosine_query
-
-        else:
-            index_query = _get_search_index_query(
-                self.search_type, self._index_type, self.neo4j_version_is_5_23_or_above
-            )
-            filter_params = {}
-
-        if self._index_type == IndexType.RELATIONSHIP:
-            if kwargs.get("return_embeddings"):
-                default_retrieval = (
-                    f"RETURN relationship.`{self.text_node_property}` AS text, score, "
-                    f"relationship {{.*, `{self.text_node_property}`: Null, "
-                    f"`{self.embedding_node_property}`: Null, id: Null, "
-                    f"_embedding_: relationship.`{self.embedding_node_property}`}} "
-                    "AS metadata"
-                )
-            else:
-                default_retrieval = (
-                    f"RETURN relationship.`{self.text_node_property}` AS text, score, "
-                    f"relationship {{.*, `{self.text_node_property}`: Null, "
-                    f"`{self.embedding_node_property}`: Null, id: Null }} AS metadata"
-                )
-
-        else:
-            if kwargs.get("return_embeddings"):
-                default_retrieval = (
-                    f"RETURN node.`{self.text_node_property}` AS text, score, "
-                    f"node {{.*, `{self.text_node_property}`: Null, "
-                    f"`{self.embedding_node_property}`: Null, id: Null, "
-                    f"_embedding_: node.`{self.embedding_node_property}`}} AS metadata"
-                )
-            else:
-                default_retrieval = (
-                    f"RETURN node.`{self.text_node_property}` AS text, score, "
-                    f"node {{.*, `{self.text_node_property}`: Null, "
-                    f"`{self.embedding_node_property}`: Null, id: Null }} AS metadata"
-                )
-
+        default_retrieval += "} AS metadata"
         retrieval_query = (
             self.retrieval_query if self.retrieval_query else default_retrieval
         )
 
-        read_query = index_query + retrieval_query
+        read_query, filter_params = get_search_query(
+            search_type=self.search_type,
+            entity_type=self._index_type,
+            retrieval_query=retrieval_query,
+            node_label=self.node_label,
+            embedding_node_property=self.embedding_node_property,
+            embedding_dimension=self.embedding_dimension,
+            filters=filter,
+            neo4j_version_is_5_23_or_above=self.neo4j_version_is_5_23_or_above,
+            use_parallel_runtime=self._is_enterprise,
+        )
         parameters = {
-            "index": self.index_name,
-            "k": k,
-            "embedding": embedding,
-            "keyword_index": self.keyword_index_name,
-            "query": remove_lucene_chars(kwargs["query"]),
-            "ef": effective_search_ratio,
+            "vector_index_name": self.index_name,
+            "top_k": k,
+            "query_vector": embedding,
+            "fulltext_index_name": self.keyword_index_name,
+            "query_text": remove_lucene_chars(kwargs["query"]),
+            "effective_search_ratio": effective_search_ratio,
             **params,
             **filter_params,
         }
@@ -1363,11 +970,15 @@ class Neo4jVector(VectorStore):
             **kwargs,
         )
 
+        # Check if the vector index already exists
+        existing_index_info = store.retrieve_existing_index()
+        if existing_index_info:
+            embedding_dimension_from_existing, index_type = existing_index_info
+        else:
+            embedding_dimension_from_existing = None
+            index_type = None
+
         if embedding_dimension:
-            (
-                embedding_dimension_from_existing,
-                index_type,
-            ) = store.retrieve_existing_index()
             if embedding_dimension_from_existing != embedding_dimension:
                 raise ValueError(
                     "The provided embedding function and vector index "
@@ -1376,7 +987,7 @@ class Neo4jVector(VectorStore):
                     f"Vector index dimension: {embedding_dimension_from_existing}"
                 )
         else:
-            embedding_dimension, index_type = store.retrieve_existing_index()
+            embedding_dimension = embedding_dimension_from_existing
 
         # Raise error if relationship index type
         if index_type == "RELATIONSHIP":
@@ -1448,11 +1059,15 @@ class Neo4jVector(VectorStore):
             **kwargs,
         )
 
+        # Check if the vector index already exists
+        existing_index_info = store.retrieve_existing_index()
+        if existing_index_info:
+            embedding_dimension_from_existing, index_type = existing_index_info
+        else:
+            embedding_dimension_from_existing = None
+            index_type = None
+
         if embedding_dimension:
-            (
-                embedding_dimension_from_existing,
-                index_type,
-            ) = store.retrieve_existing_index()
             if embedding_dimension_from_existing != embedding_dimension:
                 raise ValueError(
                     "The provided embedding function and vector index "
@@ -1461,7 +1076,7 @@ class Neo4jVector(VectorStore):
                     f"Vector index dimension: {embedding_dimension_from_existing}"
                 )
         else:
-            embedding_dimension, index_type = store.retrieve_existing_index()
+            embedding_dimension = embedding_dimension_from_existing
 
         if not index_type:
             raise ValueError(
@@ -1579,7 +1194,12 @@ class Neo4jVector(VectorStore):
         )
 
         # Check if the vector index already exists
-        embedding_dimension, index_type = store.retrieve_existing_index()
+        existing_index_info = store.retrieve_existing_index()
+        if existing_index_info:
+            embedding_dimension, index_type = existing_index_info
+        else:
+            embedding_dimension = None
+            index_type = None
 
         # Raise error if relationship index type
         if index_type == "RELATIONSHIP":

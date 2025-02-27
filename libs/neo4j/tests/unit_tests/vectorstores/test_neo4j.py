@@ -5,16 +5,11 @@ from unittest.mock import MagicMock, patch
 
 import neo4j
 import pytest
+from neo4j_graphrag.types import SearchType
 
 from langchain_neo4j.vectorstores.neo4j_vector import (
-    LOGICAL_OPERATORS,
-    IndexType,
     Neo4jVector,
-    SearchType,
-    _get_search_index_query,
-    _handle_field_filter,
     check_if_not_null,
-    construct_metadata_filter,
     dict_to_yaml_str,
     remove_lucene_chars,
 )
@@ -26,7 +21,11 @@ def mock_vector_store() -> Neo4jVector:
     mock_neo4j = MagicMock()
     mock_driver_instance = MagicMock()
     mock_driver_instance.verify_connectivity.return_value = None
-    mock_driver_instance.execute_query.return_value = ([], None, None)
+    mock_driver_instance.execute_query.return_value = (
+        [{"versions": ["5.23.0"], "edition": "enterprise"}],
+        None,
+        None,
+    )
     mock_neo4j.GraphDatabase.driver.return_value = mock_driver_instance
     mock_neo4j.exceptions.ServiceUnavailable = Exception
     mock_neo4j.exceptions.AuthError = Exception
@@ -47,11 +46,11 @@ def mock_vector_store() -> Neo4jVector:
                 password="password",
             )
 
-            vector_store.node_label = "Chunk"
-            vector_store.embedding_node_property = "embedding"
-            vector_store.text_node_property = "text"
+        vector_store.node_label = "Chunk"
+        vector_store.embedding_node_property = "embedding"
+        vector_store.text_node_property = "text"
 
-            return vector_store
+        return vector_store
 
 
 @pytest.fixture
@@ -81,17 +80,13 @@ def neo4j_vector_factory() -> Any:
         # Configure execute_query
         if query_return_value is not None:
             mock_driver_instance.execute_query.return_value = (
-                [MagicMock(data=lambda: query_return_value)],
+                [query_return_value],
                 None,
                 None,
             )
         else:
             mock_driver_instance.execute_query.return_value = (
-                [
-                    MagicMock(
-                        data=lambda: {"versions": ["5.23.0"], "edition": "enterprise"}
-                    )
-                ],
+                [{"versions": ["5.23.0"], "edition": "enterprise"}],
                 None,
                 None,
             )
@@ -149,29 +144,24 @@ def neo4j_vector_factory() -> Any:
 @pytest.mark.parametrize(
     "description, version, is_5_23_or_above",
     [
-        ("SemVer, < 5.23", "5.22.0", False),
-        ("SemVer, > 5.23", "5.24.0", True),
-        ("SemVer, < 5.23, Aura", "5.22-aura", False),
-        ("SemVer, > 5.23, Aura", "5.24-aura", True),
-        ("CalVer", "2025.01.0", True),
-        ("CalVer, Aura", "2025.01-aura", True),
+        ("SemVer, < 5.23", (5, 22, 0), False),
+        ("SemVer, >= 5.23", (5, 23, 0), True),
+        ("CalVer", (2025, 1, 0), True),
     ],
 )
+@patch("langchain_neo4j.vectorstores.neo4j_vector.get_version")
 def test_versioning_check(
+    mock_get_version: MagicMock,
     mock_vector_store: Neo4jVector,
     description: str,
-    version: str,
+    version: tuple[int, int, int],
     is_5_23_or_above: bool,
 ) -> None:
-    with patch.object(mock_vector_store, "query"):
-        assert isinstance(mock_vector_store.query, MagicMock)
-        mock_vector_store.query.return_value = [
-            {"versions": [version], "edition": "enterprise"}
-        ]
-        mock_vector_store.verify_version()
-        assert (
-            mock_vector_store.neo4j_version_is_5_23_or_above is is_5_23_or_above
-        ), f"Failed test case: {description}"
+    mock_get_version.return_value = version, False, False
+    mock_vector_store.verify_version()
+    assert (
+        mock_vector_store.neo4j_version_is_5_23_or_above is is_5_23_or_above
+    ), f"Failed test case: {description}"
 
 
 def test_escaping_lucene() -> None:
@@ -237,52 +227,6 @@ def test_converting_to_yaml() -> None:
     )
 
     assert yaml_str == expected_output
-
-
-def test_get_search_index_query_hybrid_node_neo4j_5_23_above() -> None:
-    expected_query = (
-        "CALL () { "
-        "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
-        "YIELD node, score "
-        "WITH node, score LIMIT $k "
-        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-        "UNWIND nodes AS n "
-        "RETURN n.node AS node, (n.score / max) AS score UNION "
-        "CALL db.index.fulltext.queryNodes($keyword_index, $query, "
-        "{limit: $k}) YIELD node, score "
-        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-        "UNWIND nodes AS n "
-        "RETURN n.node AS node, (n.score / max) AS score "
-        "} "
-        "WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
-    )
-
-    actual_query = _get_search_index_query(SearchType.HYBRID, IndexType.NODE, True)
-
-    assert actual_query == expected_query
-
-
-def test_get_search_index_query_hybrid_node_neo4j_5_23_below() -> None:
-    expected_query = (
-        "CALL { "
-        "CALL db.index.vector.queryNodes($index, $k * $ef, $embedding) "
-        "YIELD node, score "
-        "WITH node, score LIMIT $k "
-        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-        "UNWIND nodes AS n "
-        "RETURN n.node AS node, (n.score / max) AS score UNION "
-        "CALL db.index.fulltext.queryNodes($keyword_index, $query, "
-        "{limit: $k}) YIELD node, score "
-        "WITH collect({node:node, score:score}) AS nodes, max(score) AS max "
-        "UNWIND nodes AS n "
-        "RETURN n.node AS node, (n.score / max) AS score "
-        "} "
-        "WITH node, max(score) AS score ORDER BY score DESC LIMIT $k "
-    )
-
-    actual_query = _get_search_index_query(SearchType.HYBRID, IndexType.NODE, False)
-
-    assert actual_query == expected_query
 
 
 def test_build_import_query_version_is_or_above_5_23(
@@ -355,18 +299,6 @@ def test_build_delete_query_version_below_5_23(mock_vector_store: Neo4jVector) -
     assert actual_query == expected_query
 
 
-def test_get_search_index_query_invalid_search_type() -> None:
-    invalid_search_type = "INVALID_TYPE"
-
-    with pytest.raises(ValueError) as exc_info:
-        _get_search_index_query(
-            search_type=invalid_search_type,  # type: ignore[arg-type]
-            index_type=IndexType.NODE,
-        )
-
-    assert "Unsupported SearchType" in str(exc_info.value)
-
-
 def test_check_if_not_null_happy_case() -> None:
     props = ["prop1", "prop2", "prop3"]
     values = ["value1", 123, True]
@@ -391,165 +323,6 @@ def test_check_if_not_null_with_none_value() -> None:
         check_if_not_null(props, values)
 
     assert "must not be None or empty string" in str(exc_info.value)
-
-
-def test_handle_field_filter_invalid_field_type() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field=123, value="some_value")  # type: ignore[arg-type]
-    assert "field should be a string" in str(exc_info.value)
-
-
-def test_handle_field_filter_field_starts_with_dollar() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field="$invalid_field", value="some_value")
-    assert "Invalid filter condition" in str(exc_info.value)
-
-
-def test_handle_field_filter_invalid_field_name() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field="invalid-field!", value="some_value")
-    assert "Invalid field name" in str(exc_info.value)
-
-
-def test_handle_field_filter_multiple_keys_in_filter() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field="age", value={"$gt": 30, "$lt": 40})
-    assert "Invalid filter condition" in str(exc_info.value)
-
-
-def test_handle_field_filter_invalid_operator() -> None:
-    with pytest.raises(ValueError) as exc_info:
-        _handle_field_filter(field="age", value={"$unknown": 30})
-    assert "Invalid operator" in str(exc_info.value)
-
-
-@pytest.mark.parametrize("operator", LOGICAL_OPERATORS)
-def test_handle_field_filter_logical_operators(operator: str) -> None:
-    with pytest.raises(NotImplementedError):
-        _handle_field_filter(field="age", value={operator: {"$gt": 30, "$lt": 40}})
-
-
-def test_handle_field_filter_nin_operator() -> None:
-    field = "description"
-    value = ["sandworm", "spice"]
-    string, params = _handle_field_filter(field, {"$nin": value}, param_number=1)
-    expected_string = "n.`description` NOT IN $param_1"
-    expected_params = {"param_1": value}
-    assert string == expected_string
-    assert params == expected_params
-
-
-def test_handle_field_filter_like_operator() -> None:
-    field = "description"
-    value = "spice%"
-    string, params = _handle_field_filter(field, {"$like": value}, param_number=2)
-    expected_string = "n.`description` CONTAINS $param_2"
-    expected_params = {"param_2": "spice"}
-    assert string == expected_string
-    assert params == expected_params
-
-
-def test_handle_field_filter_ilike_operator() -> None:
-    field = "description"
-    value = "spice%"
-    string, params = _handle_field_filter(field, {"$ilike": value}, param_number=3)
-    expected_string = "toLower(n.`description`) CONTAINS $param_3"
-    expected_params = {"param_3": "spice"}
-    assert string == expected_string
-    assert params == expected_params
-
-
-def test_handle_field_filter_in_operator_with_unsupported_types() -> None:
-    field = "tags"
-    value = {"$in": ["spice", {"unsupported": "type"}]}
-    with pytest.raises(NotImplementedError) as exc_info:
-        _handle_field_filter(field, value, param_number=1)
-    assert "Unsupported type" in str(exc_info.value)
-
-
-def test_handle_field_filter_nin_operator_with_unsupported_types() -> None:
-    field = "tags"
-    value = {"$nin": ["spice", {"unsupported": "type"}]}
-    with pytest.raises(NotImplementedError) as exc_info:
-        _handle_field_filter(field, value, param_number=2)
-    assert "Unsupported type" in str(exc_info.value)
-
-
-def test_construct_metadata_filter_invalid_top_level_operator() -> None:
-    filter_dict = {"$invalid": "value"}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert "Expected $and or $or but got: $invalid" in str(exc_info.value)
-
-
-def test_construct_metadata_filter_logical_operator_with_non_list() -> None:
-    filter_dict = {"$and": {"id": 1}}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert "Expected a list" in str(exc_info.value)
-
-
-def test_construct_metadata_filter_logical_operator_with_empty_list_and_operator() -> (
-    None
-):
-    filter_dict: dict = {"$and": []}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert (
-        "Invalid filter condition. Expected a dictionary but got an empty dictionary"
-        in str(exc_info.value)
-    )
-
-
-def test_construct_metadata_filter_logical_operator_with_empty_list_or_operator() -> (
-    None
-):
-    filter_dict: dict = {"$or": []}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert (
-        "Invalid filter condition. Expected a dictionary but got an empty dictionary"
-        in str(exc_info.value)
-    )
-
-
-def test_construct_metadata_filter_multiple_keys_with_operator() -> None:
-    filter_dict = {"id": 1, "$and": [{"name": "foo"}]}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert "Expected a field but got: $and" in str(exc_info.value)
-
-
-def test_construct_metadata_filter_empty_filter() -> None:
-    filter_dict: dict = {}
-    with pytest.raises(ValueError) as exc_info:
-        construct_metadata_filter(filter_dict)
-    assert "Got an empty dictionary for filters." in str(exc_info.value)
-
-
-def test_construct_metadata_filter_happy_case() -> None:
-    filter_dict = {"height": {"$gt": 5.0}}
-    string, params = construct_metadata_filter(filter_dict)
-
-    expected_string = "n.`height` > $param_1"
-    expected_params = {"param_1": 5.0}
-
-    assert string == expected_string
-    assert params == expected_params
-
-
-def test_construct_metadata_filter_logical_operator_empty_collect_params() -> None:
-    filter_dict = {"id": 1, "name": "foo"}
-    with patch(
-        "langchain_neo4j.vectorstores.neo4j_vector.collect_params",
-        return_value=([], {}),
-    ):
-        with pytest.raises(ValueError) as exc_info:
-            construct_metadata_filter(filter_dict)
-    assert (
-        "Invalid filter condition. Expected a dictionary but got an empty dictionary"
-        in str(exc_info.value)
-    )
 
 
 def test_neo4jvector_invalid_distance_strategy() -> None:
@@ -619,7 +392,7 @@ def test_neo4jvector_version_too_low(neo4j_vector_factory: Any) -> None:
     low_version_response = {"versions": ["5.10.0"], "edition": "enterprise"}
     with pytest.raises(ValueError) as exc_info:
         neo4j_vector_factory(query_return_value=low_version_response)
-    assert "Version index is only supported in Neo4j version 5.11 or greater" in str(
+    assert "Vector index is only supported in Neo4j version 5.11 or greater" in str(
         exc_info.value
     )
 
@@ -727,15 +500,12 @@ def test_similarity_search_by_vector_metadata_filter_hybrid(
     vector_store.search_type = SearchType.HYBRID
     vector_store.embedding_dimension = 64
 
-    with pytest.raises(ValueError) as exc_info:
+    with pytest.raises(Exception) as exc_info:
         vector_store.similarity_search_by_vector(
             embedding=[0] * 64,
             filter={"field": "value"},
         )
-    assert (
-        "Metadata filtering can't be use in combination with a hybrid search approach"
-        in str(exc_info.value)
-    )
+    assert "Filters are not supported with hybrid search" in str(exc_info.value)
 
 
 def test_from_existing_index_relationship_index_error(
