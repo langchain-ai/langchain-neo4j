@@ -1,5 +1,6 @@
 from typing import List, Optional, Union
 
+import neo4j
 from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.messages import BaseMessage, messages_from_dict
 from langchain_core.utils import get_from_dict_or_env
@@ -29,14 +30,6 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
         *,
         graph: Optional[Neo4jGraph] = None,
     ):
-        try:
-            import neo4j
-        except ImportError:
-            raise ImportError(
-                "Could not import neo4j python package. "
-                "Please install it with `pip install neo4j`."
-            )
-
         # Make sure session id is not null
         if not session_id:
             raise ValueError("Please ensure that the session_id parameter is provided")

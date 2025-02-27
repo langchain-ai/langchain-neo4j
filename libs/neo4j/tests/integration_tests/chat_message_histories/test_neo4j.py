@@ -6,17 +6,12 @@ from langchain_core.messages import AIMessage, HumanMessage
 
 from langchain_neo4j.chat_message_histories.neo4j import Neo4jChatMessageHistory
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
-
-url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
-username = os.environ.get("NEO4J_USERNAME", "neo4j")
-password = os.environ.get("NEO4J_PASSWORD", "pleaseletmein")
+from tests.integration_tests.utils import Neo4jCredentials
 
 
+@pytest.mark.usefixtures("clear_neo4j_database")
 def test_add_messages() -> None:
     """Basic testing: adding messages to the Neo4jChatMessageHistory."""
-    os.environ["NEO4J_URI"] = url
-    os.environ["NEO4J_USERNAME"] = username
-    os.environ["NEO4J_PASSWORD"] = password
     assert os.environ.get("NEO4J_URI") is not None
     assert os.environ.get("NEO4J_USERNAME") is not None
     assert os.environ.get("NEO4J_PASSWORD") is not None
@@ -57,21 +52,13 @@ def test_add_messages() -> None:
     assert len(message_store.messages) == 0
     assert len(message_store_another.messages) == 0
 
-    del os.environ["NEO4J_URI"]
-    del os.environ["NEO4J_USERNAME"]
-    del os.environ["NEO4J_PASSWORD"]
 
-
-def test_add_messages_graph_object() -> None:
+@pytest.mark.usefixtures("clear_neo4j_database")
+def test_add_messages_graph_object(neo4j_credentials: Neo4jCredentials) -> None:
     """Basic testing: Passing driver through graph object."""
-    os.environ["NEO4J_URI"] = url
-    os.environ["NEO4J_USERNAME"] = username
-    os.environ["NEO4J_PASSWORD"] = password
-    assert os.environ.get("NEO4J_URI") is not None
-    assert os.environ.get("NEO4J_USERNAME") is not None
-    assert os.environ.get("NEO4J_PASSWORD") is not None
-    graph = Neo4jGraph()
+    graph = Neo4jGraph(**neo4j_credentials)
     # rewrite env for testing
+    old_username = os.environ["NEO4J_USERNAME"]
     os.environ["NEO4J_USERNAME"] = "foo"
     message_store = Neo4jChatMessageHistory("23334", graph=graph)
     message_store.clear()
@@ -80,16 +67,13 @@ def test_add_messages_graph_object() -> None:
     message_store.add_ai_message("Hi Guys!")
     # Now check if the messages are stored in the database correctly
     assert len(message_store.messages) == 2
-
-    del os.environ["NEO4J_URI"]
-    del os.environ["NEO4J_USERNAME"]
-    del os.environ["NEO4J_PASSWORD"]
+    os.environ["NEO4J_USERNAME"] = old_username
 
 
-def test_invalid_url() -> None:
+def test_invalid_url(neo4j_credentials: Neo4jCredentials) -> None:
     """Test initializing with invalid credentials raises ValueError."""
     # Parse the original URL
-    parsed_url = urllib.parse.urlparse(url)
+    parsed_url = urllib.parse.urlparse(neo4j_credentials["url"])
     # Increment the port number by 1 and wrap around if necessary
     original_port = parsed_url.port or 7687
     new_port = (original_port + 1) % 65535 or 1
@@ -102,18 +86,18 @@ def test_invalid_url() -> None:
         Neo4jChatMessageHistory(
             "test_session",
             url=new_url,
-            username=username,
-            password=password,
+            username=neo4j_credentials["username"],
+            password=neo4j_credentials["password"],
         )
     assert "Please ensure that the url is correct" in str(exc_info.value)
 
 
-def test_invalid_credentials() -> None:
+def test_invalid_credentials(neo4j_credentials: Neo4jCredentials) -> None:
     """Test initializing with invalid credentials raises ValueError."""
     with pytest.raises(ValueError) as exc_info:
         Neo4jChatMessageHistory(
             "test_session",
-            url=url,
+            url=neo4j_credentials["url"],
             username="invalid_username",
             password="invalid_password",
         )
@@ -122,10 +106,11 @@ def test_invalid_credentials() -> None:
     )
 
 
-def test_neo4j_message_history_clear_messages() -> None:
-    message_history = Neo4jChatMessageHistory(
-        session_id="123", url=url, username=username, password=password
-    )
+@pytest.mark.usefixtures("clear_neo4j_database")
+def test_neo4j_message_history_clear_messages(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
+    message_history = Neo4jChatMessageHistory(session_id="123", **neo4j_credentials)
     message_history.add_messages(
         [
             HumanMessage(content="You are a helpful assistant."),
@@ -144,10 +129,11 @@ def test_neo4j_message_history_clear_messages() -> None:
     assert list(results.records[0]["s"].labels) == ["Session"]
 
 
-def test_neo4j_message_history_clear_session_and_messages() -> None:
-    message_history = Neo4jChatMessageHistory(
-        session_id="123", url=url, username=username, password=password
-    )
+@pytest.mark.usefixtures("clear_neo4j_database")
+def test_neo4j_message_history_clear_session_and_messages(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
+    message_history = Neo4jChatMessageHistory(session_id="123", **neo4j_credentials)
     message_history.add_messages(
         [
             HumanMessage(content="You are a helpful assistant."),

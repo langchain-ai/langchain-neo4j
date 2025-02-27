@@ -1,6 +1,7 @@
 from hashlib import md5
 from typing import Any, Dict, List, Optional, Type
 
+import neo4j
 from langchain_core.utils import get_from_dict_or_env
 
 from langchain_neo4j.graphs.graph_document import GraphDocument
@@ -337,13 +338,6 @@ class Neo4jGraph(GraphStore):
         enhanced_schema: bool = False,
     ) -> None:
         """Create a new Neo4j graph wrapper instance."""
-        try:
-            import neo4j
-        except ImportError:
-            raise ImportError(
-                "Could not import neo4j python package. "
-                "Please install it with `pip install neo4j`."
-            )
 
         url = get_from_dict_or_env({"url": url}, "url", "NEO4J_URI")
         # if username and password are "", assume Neo4j auth is disabled
