@@ -168,7 +168,7 @@ class GraphCypherQAChain(Chain):
 
         :meta private:
         """
-        return [self.input_key]
+        return [self.input_key, "chat_history"]
 
     @property
     def output_keys(self) -> List[str]:
