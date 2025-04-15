@@ -1,7 +1,7 @@
 import pathlib
 from csv import DictReader
 from typing import Any, Dict, List
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, ANY
 
 import pytest
 from langchain.memory import ConversationBufferMemory, ReadOnlySharedMemory
@@ -92,6 +92,46 @@ def test_graph_cypher_qa_chain_prompt_selection_1() -> None:
     assert chain.qa_chain.first == qa_prompt
     assert hasattr(chain.cypher_generation_chain, "first")
     assert chain.cypher_generation_chain.first == cypher_prompt
+
+def test_chat_history_support() -> None:
+    """Test that chat_history is properly handled in the chain."""
+    qa_chain_mock = MagicMock()
+    chain = GraphCypherQAChain.from_llm(
+        llm=FakeLLM(),
+        graph=FakeGraphStore(),
+        verbose=True,
+        return_intermediate_steps=False,
+        allow_dangerous_requests=True,
+    )
+    chain.qa_chain = qa_chain_mock
+    assert "chat_history" in chain.input_keys
+
+    # Works when history is included
+    chat_history = "Mock conversation history"
+    chain._call({"query": "test question", "chat_history": chat_history})
+    chain.qa_chain.invoke.assert_called_with(
+        {
+            "question": "test question", 
+            "context": [],
+            "chat_history": chat_history
+        },
+        callbacks=ANY
+    )
+
+    # Works when history is NOT included
+    chain.qa_chain.reset_mock()  
+    chain._call({"query": "test question"})
+    
+    chain.qa_chain.invoke.assert_called_with(
+        {
+            "question": "test question", 
+            "context": [],
+            "chat_history": ""
+        },
+        callbacks=ANY
+    )
+    
+    
 
 
 def test_graph_cypher_qa_chain_prompt_selection_2() -> None:
