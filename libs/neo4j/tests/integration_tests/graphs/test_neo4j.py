@@ -410,9 +410,9 @@ def test_neo4j_error_after_close(neo4j_credentials: Neo4jCredentials) -> None:
     # Test various operations after close
     try:
         graph.refresh_schema()
-        assert (
-            False
-        ), "Expected RuntimeError when refreshing schema on closed connection"
+        assert False, (
+            "Expected RuntimeError when refreshing schema on closed connection"
+        )
     except RuntimeError as e:
         assert "connection has been closed" in str(e)
 

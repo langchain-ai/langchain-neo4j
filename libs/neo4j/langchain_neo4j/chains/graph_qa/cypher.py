@@ -374,7 +374,11 @@ class GraphCypherQAChain(Chain):
                 )
             else:
                 final_result = self.qa_chain.invoke(
-                    {"question": question, "context": context, "chat_history": inputs.get("chat_history", "")},
+                    {
+                        "question": question,
+                        "context": context,
+                        "chat_history": inputs.get("chat_history", ""),
+                    },
                     callbacks=callbacks,
                 )
 
