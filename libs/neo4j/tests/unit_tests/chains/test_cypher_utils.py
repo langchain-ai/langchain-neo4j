@@ -31,5 +31,5 @@ corrector = CypherQueryCorrector([schema])
         ),
     ],
 )
-def test_cypher_query_corrector(description, query, expected):
+def test_cypher_query_corrector(description: str, query: str, expected: str) -> None:
     assert corrector.correct_query(query) == expected, f"{description} failed"
