@@ -789,7 +789,7 @@ class Neo4jVector(VectorStore):
 
         results = self.query(read_query, params=parameters)
 
-        if any(result["text"] is None for result in results):
+        if any(result.get("text") is None for result in results):
             if not self.retrieval_query:
                 raise ValueError(
                     f"Make sure that none of the `{self.text_node_property}` "
