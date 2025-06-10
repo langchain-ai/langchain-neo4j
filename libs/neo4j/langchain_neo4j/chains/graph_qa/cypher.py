@@ -168,7 +168,7 @@ class GraphCypherQAChain(Chain):
 
         :meta private:
         """
-        return [self.input_key]
+        return [self.input_key, "chat_history"]
 
     @property
     def output_keys(self) -> List[str]:
@@ -374,7 +374,11 @@ class GraphCypherQAChain(Chain):
                 )
             else:
                 final_result = self.qa_chain.invoke(
-                    {"question": question, "context": context},
+                    {
+                        "question": question,
+                        "context": context,
+                        "chat_history": inputs.get("chat_history", ""),
+                    },
                     callbacks=callbacks,
                 )
 
