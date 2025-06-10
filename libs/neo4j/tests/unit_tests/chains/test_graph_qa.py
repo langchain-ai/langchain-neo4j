@@ -1,7 +1,7 @@
 import pathlib
 from csv import DictReader
 from typing import Any, Dict, List
-from unittest.mock import ANY, MagicMock, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 from langchain.memory import ConversationBufferMemory, ReadOnlySharedMemory
@@ -312,36 +312,6 @@ def test_graph_cypher_qa_chain() -> None:
     # If we get here without a key error, that means memory
     # was used properly to create prompts.
     assert True
-
-
-def test_chat_history_support() -> None:
-    """Test that chat_history is properly handled in the chain."""
-    qa_chain_mock = MagicMock()
-    chain = GraphCypherQAChain.from_llm(
-        llm=FakeLLM(),
-        graph=FakeGraphStore(),
-        verbose=True,
-        return_intermediate_steps=False,
-        allow_dangerous_requests=True,
-    )
-    chain.qa_chain = qa_chain_mock
-    assert "chat_history" in chain.input_keys
-
-    # Works when history is included
-    chat_history = "Mock conversation history"
-    chain._call({"query": "test question", "chat_history": chat_history})
-    chain.qa_chain.invoke.assert_called_with(
-        {"question": "test question", "context": [], "chat_history": chat_history},
-        callbacks=ANY,
-    )
-
-    # Works when history is NOT included
-    chain.qa_chain.reset_mock()
-    chain._call({"query": "test question"})
-
-    chain.qa_chain.invoke.assert_called_with(
-        {"question": "test question", "context": [], "chat_history": ""}, callbacks=ANY
-    )
 
 
 def test_cypher_generation_failure() -> None:

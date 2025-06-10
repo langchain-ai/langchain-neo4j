@@ -447,17 +447,12 @@ def test_neo4jvector_fts_vector_node_label_mismatch(neo4j_vector_factory: Any) -
     mock_embedding = MagicMock()
     mock_embedding.embed_query.return_value = [0.1] * embedding_dimension
 
-    with (
-        patch.object(
-            Neo4jVector,
-            "retrieve_existing_index",
-            return_value=(embedding_dimension, "NODE"),
-        ),
-        patch.object(
-            Neo4jVector,
-            "retrieve_existing_fts_index",
-            return_value="DifferentNodeLabel",
-        ),
+    with patch.object(
+        Neo4jVector,
+        "retrieve_existing_index",
+        return_value=(embedding_dimension, "NODE"),
+    ), patch.object(
+        Neo4jVector, "retrieve_existing_fts_index", return_value="DifferentNodeLabel"
     ):
         with pytest.raises(ValueError) as exc_info:
             neo4j_vector_factory(
@@ -552,17 +547,12 @@ def test_from_existing_index_fts_vector_node_label_mismatch(
     mock_embedding = MagicMock()
     mock_embedding.embed_query.return_value = [0.1] * embedding_dimension
 
-    with (
-        patch.object(
-            Neo4jVector,
-            "retrieve_existing_index",
-            return_value=(embedding_dimension, "NODE"),
-        ),
-        patch.object(
-            Neo4jVector,
-            "retrieve_existing_fts_index",
-            return_value="DifferentNodeLabel",
-        ),
+    with patch.object(
+        Neo4jVector,
+        "retrieve_existing_index",
+        return_value=(embedding_dimension, "NODE"),
+    ), patch.object(
+        Neo4jVector, "retrieve_existing_fts_index", return_value="DifferentNodeLabel"
     ):
         with pytest.raises(ValueError) as exc_info:
             neo4j_vector_factory(
@@ -710,13 +700,10 @@ def test_from_existing_graph_fts_vector_node_label_mismatch(
 ) -> None:
     mock_embedding = MagicMock()
     mock_embedding.embed_query.return_value = [0.1] * 64
-    with (
-        patch.object(Neo4jVector, "retrieve_existing_index", return_value=(64, "NODE")),
-        patch.object(
-            Neo4jVector,
-            "retrieve_existing_fts_index",
-            return_value="DifferentNodeLabel",
-        ),
+    with patch.object(
+        Neo4jVector, "retrieve_existing_index", return_value=(64, "NODE")
+    ), patch.object(
+        Neo4jVector, "retrieve_existing_fts_index", return_value="DifferentNodeLabel"
     ):
         with pytest.raises(ValueError) as exc_info:
             neo4j_vector_factory(

@@ -957,7 +957,8 @@ class Neo4jVector(VectorStore):
 
         if search_type == SearchType.HYBRID and not keyword_index_name:
             raise ValueError(
-                "keyword_index name has to be specified when using hybrid search option"
+                "keyword_index name has to be specified "
+                "when using hybrid search option"
             )
 
         store = cls(
