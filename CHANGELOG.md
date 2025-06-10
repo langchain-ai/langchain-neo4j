@@ -2,14 +2,22 @@
 
 ## Next
 
+## 0.4.0
+
 ### Changed
 
 - Renamed the `type` property to `role` on `Message` nodes in `Neo4jChatMessageHistory`.
+- Updated `GraphCypherQAChain` to use the same schema format as `Neo4jGraph`.
+- Replaced code used to query vector and full text indexes in the `vectorstores.neo4j_vector` module with equivalents from the `neo4j-graphrag` package.
+- Replaced database schema retrieval code in the `graphs.neo4j_graph` module with equivalents from the `neo4j-graphrag` package.
+- Replaced the Cypher queries in `Neo4jChatMessageHistory` with equivalents from the `neo4j-graphrag` package.
+- Updated the `construct_schema` function used by the `GraphCypherQAChain` to use schema retrieval functions from the `neo4j-graphrag` package.
+- Replaced the legacy `extract_cypher` function with the improved version from `neo4j-graphrag` package.
 
 ### Added
 
 - Introduced a `delete_session_node` parameter to the `clear` method in `Neo4jChatMessageHistory` for optional deletion of the `Session` node.
-- Updates the `GraphCypherQAChain` to use the same schema format as `Neo4jGraph`.
+- Added `neo4j-graphrag` to the dependencies.
 
 ### Fixed
 

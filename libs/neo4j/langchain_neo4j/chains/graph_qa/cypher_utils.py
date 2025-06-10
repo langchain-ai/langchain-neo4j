@@ -72,7 +72,7 @@ class CypherQueryCorrector:
                 m for i, m in enumerate(matched) if i not in [1, len(matched) - 1]
             ]
             path = "".join(matched)
-            idx = query.find(path) + len(path) - len(matched[-1])
+            idx = idx + query[idx:].find(path) + len(path) - len(matched[-1])
             paths.append(path)
         return paths
 
