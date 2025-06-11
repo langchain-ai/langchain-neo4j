@@ -1,6 +1,7 @@
 import os
 import urllib.parse
 
+import neo4j
 import pytest
 from langchain_core.messages import AIMessage, HumanMessage
 
@@ -148,3 +149,26 @@ def test_neo4j_message_history_clear_session_and_messages(
         query_="MATCH (s:`Session`) WHERE s.id = '123' RETURN s"
     )
     assert results.records == []
+
+
+@pytest.mark.usefixtures("clear_neo4j_database")
+def test_database_parameter(neo4j_credentials: Neo4jCredentials) -> None:
+    custom_db = "testdb"
+    driver = neo4j.GraphDatabase.driver(
+        neo4j_credentials["url"],
+        auth=(neo4j_credentials["username"], neo4j_credentials["password"]),
+    )
+
+    driver.execute_query(f"CREATE DATABASE `{custom_db}` IF NOT EXISTS")
+    message_store = Neo4jChatMessageHistory(
+        "session_custom_db",
+        database=custom_db,
+        **neo4j_credentials,
+    )
+    message_store.clear()
+    assert message_store._database == custom_db
+    message_store.add_user_message("Hello on custom DB")
+    message_store.add_ai_message("Custom DB OK")
+    assert len(message_store.messages) == 2
+    driver.execute_query(f"DROP DATABASE `{custom_db}` IF EXISTS")
+    driver.close()
