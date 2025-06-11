@@ -153,7 +153,7 @@ class Neo4jVector(VectorStore):
 
             url="bolt://localhost:7687"
             username="neo4j"
-            password="pleaseletmein"
+            password="password"
             embeddings = OpenAIEmbeddings()
             vectorestore = Neo4jVector.from_documents(
                 embedding=embeddings,
