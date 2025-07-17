@@ -647,7 +647,7 @@ typing-extensions = ">=4.7"
 type = "git"
 url = "https://github.com/langchain-ai/langchain.git"
 reference = "HEAD"
-resolved_reference = "9165cde538a5425e52ff2a65551898ad20a030d4"
+resolved_reference = "59407338dde583bcb03abde191bd0e1550ce69be"
 subdirectory = "libs/core"
 
 [[package]]
@@ -820,9 +820,9 @@ weaviate = ["weaviate-client (>=4.6.1,<5.0.0)"]
 
 [package.source]
 type = "git"
-url = "https://github.com/alexthomas93/neo4j-graphrag-python.git"
-reference = "bugfix/3.9-typing"
-resolved_reference = "1b9c9bf160e6d467b487db2f37c997ea6710840b"
+url = "https://github.com/neo4j/neo4j-graphrag-python.git"
+reference = "HEAD"
+resolved_reference = "9f69084bb925109c2357b262482ca11e68a9b40d"
 
 [[package]]
 name = "numpy"
@@ -1916,4 +1916,4 @@ cffi = ["cffi (>=1.11)"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.9,<3.14"
-content-hash = "e734ba57bdc3cca6eb976f43e89c4100682cb523b48e7f19dd69bde5f7816533"
+content-hash = "05b1a8a7ae471ba43b735f24d8dbbf179c9ab77b0f412d6bb87184ab192ceefa"
