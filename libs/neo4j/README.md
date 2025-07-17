@@ -132,7 +132,7 @@ make tests
 Install the codespell, lint, and typing dependencies to lint and format your code:
 
 ```bash
-poetry install --with codespell,lint,typing
+poetry install --with codespell,lint,typing,mmr
 ```
 
 To format your code, run:
