@@ -101,7 +101,7 @@ chain.run("Who starred in Top Gun?")
 Install the test dependencies to run the tests:
 
 ```bash
-poetry install --with test,test_integration
+poetry install --with test,test_integration,mmr
 ```
 
 ### Unit Tests
@@ -132,7 +132,7 @@ make tests
 Install the codespell, lint, and typing dependencies to lint and format your code:
 
 ```bash
-poetry install --with codespell,lint,typing
+poetry install --with codespell,lint,typing,mmr
 ```
 
 To format your code, run:

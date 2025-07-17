@@ -17,7 +17,15 @@ langchain-core = "^0.3.8"
 neo4j = "^5.25.0"
 langchain = "^0.3.7"
 neo4j-graphrag = "^1.5.0"
-numpy = ">=1.20.0,<=2.0.2"
+
+[tool.poetry.group.mmr]
+optional = true
+
+[tool.poetry.group.mmr.dependencies]
+numpy = [
+  { version = ">=1.20.0,<=2.0.2", python = ">=3.9,<3.10" },
+  { version = "^2.1.0", python = ">=3.10" }
+]
 
 [tool.poetry.group.test]
 optional = true

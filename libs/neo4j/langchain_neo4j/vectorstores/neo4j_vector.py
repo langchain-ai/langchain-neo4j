@@ -17,7 +17,6 @@ from typing import (
 )
 
 import neo4j
-import numpy as np
 from langchain_core.documents import Document
 from langchain_core.embeddings import Embeddings
 from langchain_core.utils import get_from_dict_or_env
@@ -1301,6 +1300,16 @@ class Neo4jVector(VectorStore):
         Returns:
             List of Documents selected by maximal marginal relevance.
         """
+        try:
+            import numpy as np
+        except ImportError as e:
+            msg = (
+                "max_marginal_relevance_search requires numpy to be installed. "
+                "Please install numpy with `pip install langchain-neo4j[mmr]` "
+                "or `pip install numpy`."
+            )
+            raise ImportError(msg) from e
+
         # Embed the query
         query_embedding = self.embedding.embed_query(query)
 
