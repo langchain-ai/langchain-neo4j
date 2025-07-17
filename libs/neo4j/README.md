@@ -101,7 +101,7 @@ chain.run("Who starred in Top Gun?")
 Install the test dependencies to run the tests:
 
 ```bash
-poetry install --with test,test_integration
+poetry install --with test,test_integration,mmr
 ```
 
 ### Unit Tests
