@@ -2,6 +2,27 @@
 
 ## Next
 
+## 0.5.0
+
+### Added
+
+- Added support for specifying custom database names in `Neo4jChatMessageHistory` (not limited to the default `"neo4j"`).  
+- Introduced an optional `mmr` dependency group for maximal marginal relevance search dependencies.
+- Included `numpy` in the `mmr` dependency group.
+
+### Changed
+
+- Bumped `neo4j-graphrag` dependency version from `^1.5.0` to `^1.9.0`.  
+
+### Fixed
+
+- Prevented infinite loops in `CypherQueryCorrector.extract_paths` whenever there was a repeated path in a Cypher query.
+- Replaced direct `result["text"]` indexing with `result.get("text")` in `Neo4jVector.similarity_search_with_score_by_vector`, so missing text fields are handled gracefully instead of raising errors.
+- Changed an empty-list check in `CypherQueryCorrector.detect_node_variables` so that nodes without an explicit variable are properly skipped instead of misclassifying all labels under an empty variable.
+- Stopped `Neo4jChatMessageHistory` from creating duplicate session nodes.
+- Schema bug in `Neo4jGraph` when `enhance_schema=True` where relationships with boolean properties triggered a malformed `RETURN {} AS output` Cypher query and prevented graph initialization.
+- Ensured custom DB names are passed through to `retrieve_vector_index_info` and `retrieve_existing_fts_index` in `Neo4jVector`.  
+
 ## 0.4.0
 
 ### Changed
