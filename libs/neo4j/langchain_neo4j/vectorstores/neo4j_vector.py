@@ -382,6 +382,7 @@ class Neo4jVector(VectorStore):
             index_name=self.index_name,
             label_or_type=self.node_label,
             embedding_property=self.embedding_node_property,
+            neo4j_database=self._database,
         )
         if index_information:
             try:
@@ -417,6 +418,7 @@ class Neo4jVector(VectorStore):
                 index_name=self.keyword_index_name,
                 label_or_type=self.node_label,
                 text_properties=text_node_properties or [self.text_node_property],
+                neo4j_database=self._database,
             )
         else:
             raise ValueError("keyword_index_name is not set.")
