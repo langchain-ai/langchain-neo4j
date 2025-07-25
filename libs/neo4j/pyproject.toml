@@ -13,7 +13,7 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.9,<3.14"
-langchain-core = "^0.3.8"
+langchain-core = "^0.3.39"
 neo4j = "^5.25.0"
 langchain = "^0.3.7"
 neo4j-graphrag = "^1.9.0"
