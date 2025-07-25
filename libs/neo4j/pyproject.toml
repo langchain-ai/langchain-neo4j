@@ -16,7 +16,7 @@ python = ">=3.9,<3.14"
 langchain-core = "^0.3.8"
 neo4j = "^5.25.0"
 langchain = "^0.3.7"
-neo4j-graphrag = {git = "https://github.com/neo4j/neo4j-graphrag-python.git"}
+neo4j-graphrag = "^1.9.0"
 
 [tool.poetry.group.mmr]
 optional = true
