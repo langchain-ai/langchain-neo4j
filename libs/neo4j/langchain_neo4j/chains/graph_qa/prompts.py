@@ -11,11 +11,15 @@ Note: Do not include any explanations or apologies in your responses.
 Do not respond to any questions that might ask anything else than for you to construct a Cypher statement.
 Do not include any text except the generated Cypher statement.
 
+Examples (optional):
+{examples}
+
 The question is:
 {question}"""
 
 CYPHER_GENERATION_PROMPT = PromptTemplate(
-    input_variables=["schema", "question"], template=CYPHER_GENERATION_TEMPLATE
+    input_variables=["schema", "examples", "question"],
+    template=CYPHER_GENERATION_TEMPLATE,
 )
 
 CYPHER_QA_TEMPLATE = """You are an assistant that helps to form nice and human understandable answers.
