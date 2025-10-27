@@ -2,6 +2,17 @@
 
 ## Next
 
+## 0.6.0
+
+### Added
+
+- Added `langchain-classic` as a dependency.
+
+### Changed
+
+- Removed `langchain` as a dependency.
+- Removed support for Python 3.9 as `langchain-classic` no longer supports it.
+
 ## 0.5.0
 
 ### Added
