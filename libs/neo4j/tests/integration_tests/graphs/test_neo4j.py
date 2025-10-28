@@ -138,7 +138,7 @@ def test_neo4j_timeout(neo4j_credentials: Neo4jCredentials) -> None:
 
 @pytest.mark.usefixtures("clear_neo4j_database")
 def test_neo4j_sanitize_values(neo4j_credentials: Neo4jCredentials) -> None:
-    """Test that lists with more than 128 elements are removed from the results."""
+    """Test that lists with more than `128` elements are removed from the results."""
     graph = Neo4jGraph(sanitize=True, **neo4j_credentials)
     # Delete all nodes in the graph
     graph.query("MATCH (n) DETACH DELETE n")
