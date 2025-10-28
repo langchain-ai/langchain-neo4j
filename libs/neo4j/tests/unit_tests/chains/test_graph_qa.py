@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 from unittest.mock import MagicMock, patch
 
 import pytest
-from langchain.memory import ConversationBufferMemory, ReadOnlySharedMemory
+from langchain_classic.memory import ConversationBufferMemory, ReadOnlySharedMemory
 from langchain_core.language_models.llms import LLM
 from langchain_core.messages import (
     AIMessage,

@@ -2,6 +2,19 @@
 
 ## Next
 
+## 0.6.0
+
+### Added
+
+- Added `langchain-classic` as a dependency.
+
+### Changed
+
+- Removed `langchain` as a dependency.
+- Removed support for Python 3.9 as `langchain-classic` no longer supports it.
+- CI/CD workflows now test Python versions 3.10 to 3.13 in line with other LangChain integrations.
+- Bumped `langchain-core` dependency version from `^0.3.39` to `^1.0.0`
+
 ## 0.5.0
 
 ### Added
