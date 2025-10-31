@@ -293,7 +293,7 @@ class Neo4jVector(VectorStore):
 
         Args:
             query: The Cypher query to execute.
-            params: Dictionary of query parameters.
+            params: `dict` of query parameters.
 
         Returns:
             List of dictionaries containing the query results.
@@ -365,7 +365,7 @@ class Neo4jVector(VectorStore):
         If the index doesn't exist, `None` is returned.
 
         Returns:
-            int or None: The embedding dimension of the existing index if found.
+            The embedding dimension of the existing index if found.
         """
         index_information = retrieve_vector_index_info(
             driver=self._driver,
@@ -632,7 +632,7 @@ class Neo4jVector(VectorStore):
         effective_search_ratio: int = 1,
         **kwargs: Any,
     ) -> List[Document]:
-        """Run similarity search with Neo4jVector.
+        """Run similarity search with `Neo4jVector`.
 
         Args:
             query: Query text to search for.
@@ -853,7 +853,7 @@ class Neo4jVector(VectorStore):
         **kwargs: Any,
     ) -> Neo4jVector:
         """
-        Return Neo4jVector initialized from texts and embeddings.
+        Return `Neo4jVector` initialized from texts and embeddings.
         Neo4j credentials are required in the form of `url`, `username`,
         and `password` and optional `database` parameters.
         """
@@ -880,10 +880,10 @@ class Neo4jVector(VectorStore):
         pre_delete_collection: bool = False,
         **kwargs: Any,
     ) -> Neo4jVector:
-        """Construct Neo4jVector wrapper from raw documents and pre-
+        """Construct `Neo4jVector` wrapper from raw documents and pre-
         generated embeddings.
 
-        Return Neo4jVector initialized from documents and embeddings.
+        Return `Neo4jVector` initialized from documents and embeddings.
         Neo4j credentials are required in the form of `url`, `username`,
         and `password` and optional `database` parameters.
 
@@ -1088,7 +1088,7 @@ class Neo4jVector(VectorStore):
         **kwargs: Any,
     ) -> Neo4jVector:
         """
-        Return Neo4jVector initialized from documents and embeddings.
+        Return `Neo4jVector` initialized from documents and embeddings.
         Neo4j credentials are required in the form of `url`, `username`,
         and `password` and optional `database` parameters.
         """
@@ -1120,15 +1120,15 @@ class Neo4jVector(VectorStore):
         **kwargs: Any,
     ) -> Neo4jVector:
         """
-        Initialize and return a Neo4jVector instance from an existing graph.
+        Initialize and return a `Neo4jVector` instance from an existing graph.
 
-        This method initializes a Neo4jVector instance using the provided
+        This method initializes a `Neo4jVector` instance using the provided
         parameters and the existing graph. It validates the existence of
         the indices and creates new ones if they don't exist.
 
         Returns:
-        Neo4jVector: An instance of Neo4jVector initialized with the provided parameters
-                    and existing graph.
+            An instance of `Neo4jVector` initialized with the provided parameters and
+                existing graph.
 
         Example:
             ```python

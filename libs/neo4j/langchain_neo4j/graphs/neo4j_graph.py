@@ -115,9 +115,10 @@ class Neo4jGraph(GraphStore):
                 !!! note
 
                     By default, there is no timeout set.
-            sanitize: A flag to indicate whether to remove lists with more than 128
-                elements from results. Useful for removing embedding-like properties
-                from database responses.
+            sanitize: A flag to indicate whether to remove lists with more than `128`
+                elements from results.
+
+                Useful for removing embedding-like properties from database responses.
             refresh_schema: A flag whether to refresh schema information at
                 initialization.
             driver_config: Configuration passed to Neo4j Driver.
@@ -304,14 +305,19 @@ class Neo4jGraph(GraphStore):
 
         Args:
             graph_documents: A list of `GraphDocument` objects that contain the nodes
-                and relationships to be added to the graph. Each `GraphDocument` should
-                encapsulate the structure of part of the graph, including nodes,
-                relationships, and optionally the source document information.
+                and relationships to be added to the graph.
+
+                Each `GraphDocument` should encapsulate the structure of part of the
+                graph, including nodes, relationships, and optionally the source
+                document information.
             include_source: If `True`, stores the source document and links it to nodes
-                in the graph using the `MENTIONS` relationship. This is useful for
-                tracing back the origin of data. Merges source documents based on the
-                `id` property from the source document metadata if available; otherwise
-                it calculates the MD5 hash of `page_content` for merging process.
+                in the graph using the `MENTIONS` relationship.
+
+                This is useful for tracing back the origin of data.
+
+                Merges source documents based on the `id` property from the source
+                document metadata if available; otherwise it calculates the MD5 hash of
+                `page_content` for merging process.
             baseEntityLabel: If `True`, each newly created node gets a secondary
                 `__Entity__` label, which is indexed and improves import speed and
                 performance.
