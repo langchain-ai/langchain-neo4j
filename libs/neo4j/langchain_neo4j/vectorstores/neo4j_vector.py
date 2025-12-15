@@ -146,10 +146,10 @@ class Neo4jVector(VectorStore):
         username="neo4j"
         password="password"
         embeddings = OpenAIEmbeddings()
-        vectorestore = Neo4jVector.from_documents(
+        vector_store = Neo4jVector.from_documents(
             embedding=embeddings,
             documents=docs,
-            url=url
+            url=url,
             username=username,
             password=password,
         )
@@ -676,7 +676,7 @@ class Neo4jVector(VectorStore):
                 to balance query accuracy and performance.
 
         Returns:
-            List of `Document` objects most similar to the query and score for each
+            List of `Document` objects most similar to the query and score for each.
         """
         embedding = self.embedding.embed_query(query)
         docs = self.similarity_search_with_score_by_vector(
@@ -720,7 +720,7 @@ class Neo4jVector(VectorStore):
 
         Returns:
             A list of tuples, each containing a `Document` object and its similarity
-                score.
+                score (defaults to 0.0 if score is not returned by the retrieval query).
         """
         if filter and not self.support_metadata_filter:
             raise ValueError(
@@ -799,14 +799,22 @@ class Neo4jVector(VectorStore):
         docs = [
             (
                 Document(
-                    page_content=dict_to_yaml_str(result["text"])
-                    if isinstance(result["text"], dict)
-                    else result["text"],
-                    metadata={
-                        k: v for k, v in result["metadata"].items() if v is not None
-                    },
+                    page_content=(
+                        dict_to_yaml_str(result["text"])
+                        if isinstance(result["text"], dict)
+                        else result["text"]
+                    ),
+                    metadata=(
+                        {
+                            k: v
+                            for k, v in result.get("metadata", {}).items()
+                            if v is not None
+                        }
+                        if result.get("metadata")
+                        else {}
+                    ),
                 ),
-                result["score"],
+                result.get("score", 0.0),
             )
             for result in results
         ]
