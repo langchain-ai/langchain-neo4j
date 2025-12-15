@@ -1,5 +1,5 @@
 from hashlib import md5
-from typing import Any, Dict, List, Optional, Type, Union
+from typing import Any, Dict, List, Optional, Type
 
 import neo4j
 from langchain_core.utils import get_from_dict_or_env
@@ -129,7 +129,7 @@ class Neo4jGraph(GraphStore):
         """
 
         url = get_from_dict_or_env({"url": url}, "url", "NEO4J_URI")
-        auth: Union[Auth, None]
+        auth: Optional[Auth] = None
         # If the username and password are "", assume Neo4j auth is disabled
         if username == "" and password == "":
             auth = None
