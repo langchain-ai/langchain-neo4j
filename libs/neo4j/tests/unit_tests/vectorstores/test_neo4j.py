@@ -836,3 +836,60 @@ def test_embedding_dimension_inconsistent_raises_value_error(
         "The provided embedding function and vector index dimensions do not match."
         in str(exc_info.value)
     )
+
+
+def test_from_existing_index_with_text_node_properties(
+    neo4j_vector_factory: Any,
+) -> None:
+    """Test that from_existing_index correctly constructs retrieval query
+    when text_node_properties is provided, using embedding_node_property
+    retrieved from the existing index."""
+    mock_embedding = MagicMock()
+    mock_embedding.embed_query.return_value = [0.1] * 64
+
+    def mock_retrieve_existing_index(self: Neo4jVector) -> tuple:
+        # Simulate what the real method does: set properties from the index
+        self.embedding_node_property = "custom_embedding_prop"
+        self.node_label = "TestNode"
+        return (64, "NODE")
+
+    with patch.object(
+        Neo4jVector, "retrieve_existing_index", mock_retrieve_existing_index
+    ):
+        vector_store = neo4j_vector_factory(
+            method="from_existing_index",
+            embedding=mock_embedding,
+            index_name="test_index",
+            text_node_properties=["name", "description", "status"],
+        )
+
+    # Verify the retrieval query contains the concatenated text properties
+    assert vector_store.retrieval_query is not None
+    assert "['name', 'description', 'status']" in vector_store.retrieval_query
+    assert "reduce(str='', k IN" in vector_store.retrieval_query
+    assert "`name`: Null" in vector_store.retrieval_query
+    assert "`description`: Null" in vector_store.retrieval_query
+    assert "`status`: Null" in vector_store.retrieval_query
+    # Verify that embedding_node_property from the index is used in the query
+    assert "`custom_embedding_prop`: Null" in vector_store.retrieval_query
+
+
+def test_from_existing_index_without_text_node_properties(
+    neo4j_vector_factory: Any,
+) -> None:
+    """Test that from_existing_index works without text_node_properties
+    (backward compatibility)."""
+    mock_embedding = MagicMock()
+    mock_embedding.embed_query.return_value = [0.1] * 64
+
+    with patch.object(
+        Neo4jVector, "retrieve_existing_index", return_value=(64, "NODE")
+    ):
+        vector_store = neo4j_vector_factory(
+            method="from_existing_index",
+            embedding=mock_embedding,
+            index_name="test_index",
+        )
+
+    # Without text_node_properties, retrieval_query should be empty (uses default)
+    assert vector_store.retrieval_query == ""

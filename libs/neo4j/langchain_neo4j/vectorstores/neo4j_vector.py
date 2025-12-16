@@ -799,9 +799,11 @@ class Neo4jVector(VectorStore):
         docs = [
             (
                 Document(
-                    page_content=dict_to_yaml_str(result["text"])
-                    if isinstance(result["text"], dict)
-                    else result["text"],
+                    page_content=(
+                        dict_to_yaml_str(result["text"])
+                        if isinstance(result["text"], dict)
+                        else result["text"]
+                    ),
                     metadata={
                         k: v for k, v in result["metadata"].items() if v is not None
                     },
@@ -921,6 +923,8 @@ class Neo4jVector(VectorStore):
         search_type: SearchType = DEFAULT_SEARCH_TYPE,
         keyword_index_name: Optional[str] = None,
         embedding_dimension: Optional[int] = None,
+        text_node_properties: Optional[List[str]] = None,
+        retrieval_query: Optional[str] = None,
         **kwargs: Any,
     ) -> Neo4jVector:
         """
@@ -930,6 +934,23 @@ class Neo4jVector(VectorStore):
         Neo4j credentials are required in the form of `url`, `username`,
         and `password` and optional `database` parameters along with
         the `index_name` definition.
+
+        Args:
+            embedding: Embeddings object to use for embedding generation.
+            index_name: Name of the existing vector index.
+            search_type: Type of search to perform (default: VECTOR).
+            keyword_index_name: Name of the keyword index for hybrid search.
+            embedding_dimension: Dimension of the embeddings.
+            text_node_properties: Optional list of node properties to use as text
+                content. When provided, the retrieval query will concatenate these
+                properties. If not provided, uses the single `text_node_property`
+                (default: "text").
+            retrieval_query: Optional custom retrieval query. If provided, takes
+                precedence over auto-generated queries.
+            **kwargs: Additional arguments passed to the Neo4jVector constructor.
+
+        Returns:
+            Neo4jVector: An instance connected to the existing index.
         """
 
         if search_type == SearchType.HYBRID and not keyword_index_name:
@@ -947,6 +968,7 @@ class Neo4jVector(VectorStore):
         )
 
         # Check if the vector index already exists
+        # This also retrieves and sets node_label and embedding_node_property
         existing_index_info = store.retrieve_existing_index()
         if existing_index_info:
             embedding_dimension_from_existing, index_type = existing_index_info
@@ -1001,6 +1023,21 @@ class Neo4jVector(VectorStore):
                     raise ValueError(
                         "Vector and keyword index don't index the same node label"
                     )
+
+        # Construct retrieval query for multiple text properties if provided
+        # Uses embedding_node_property retrieved from the existing index
+        if retrieval_query:
+            store.retrieval_query = retrieval_query
+        elif text_node_properties and not retrieval_query:
+            store.retrieval_query = (
+                f"RETURN reduce(str='', k IN {text_node_properties} |"
+                " str + '\\n' + k + ': ' + coalesce(node[k], '')) AS text, "
+                "node {.*, `"
+                + store.embedding_node_property
+                + "`: Null, id: Null, "
+                + ", ".join([f"`{prop}`: Null" for prop in text_node_properties])
+                + "} AS metadata, score"
+            )
 
         return store
 
