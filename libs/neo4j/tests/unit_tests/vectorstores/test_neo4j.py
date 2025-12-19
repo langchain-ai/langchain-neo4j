@@ -838,6 +838,68 @@ def test_embedding_dimension_inconsistent_raises_value_error(
     )
 
 
+def test_similarity_search_with_missing_metadata(
+    neo4j_vector_factory: Any,
+) -> None:
+    """Test that search works when both metadata and score are missing."""
+    vector_store = neo4j_vector_factory()
+    vector_store.support_metadata_filter = True
+    vector_store.search_type = SearchType.VECTOR
+    vector_store.embedding_dimension = 64
+    vector_store.retrieval_query = "RETURN node.text AS text"
+
+    mock_results = [
+        {"text": "test content 1", "score": 0.95},
+        {"text": "test content 2", "score": 0.85},
+    ]
+
+    with patch.object(Neo4jVector, "query", return_value=mock_results):
+        docs = vector_store.similarity_search_with_score_by_vector(
+            embedding=[0.1] * 64,
+            k=2,
+            query="test query",
+        )
+
+    assert len(docs) == 2
+    assert docs[0][0].page_content == "test content 1"
+    assert docs[0][0].metadata == {}
+    assert docs[0][1] == 0.95
+    assert docs[1][0].page_content == "test content 2"
+    assert docs[1][0].metadata == {}
+    assert docs[1][1] == 0.85
+
+
+def test_similarity_search_with_all_fields_present(neo4j_vector_factory: Any) -> None:
+    """Test that search works normally when all fields are present."""
+    vector_store = neo4j_vector_factory()
+    vector_store.support_metadata_filter = True
+    vector_store.search_type = SearchType.VECTOR
+    vector_store.embedding_dimension = 64
+    vector_store.retrieval_query = (
+        "RETURN node.text AS text, node {.*} AS metadata, score"
+    )
+
+    mock_results = [
+        {"text": "test content 1", "metadata": {"key": "value1"}, "score": 0.95},
+        {"text": "test content 2", "metadata": {"key": "value2"}, "score": 0.85},
+    ]
+
+    with patch.object(Neo4jVector, "query", return_value=mock_results):
+        docs = vector_store.similarity_search_with_score_by_vector(
+            embedding=[0.1] * 64,
+            k=2,
+            query="test query",
+        )
+
+    assert len(docs) == 2
+    assert docs[0][0].page_content == "test content 1"
+    assert docs[0][0].metadata == {"key": "value1"}
+    assert docs[0][1] == 0.95
+    assert docs[1][0].page_content == "test content 2"
+    assert docs[1][0].metadata == {"key": "value2"}
+    assert docs[1][1] == 0.85
+
+
 def test_from_existing_index_with_text_node_properties(
     neo4j_vector_factory: Any,
 ) -> None:

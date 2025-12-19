@@ -146,10 +146,10 @@ class Neo4jVector(VectorStore):
         username="neo4j"
         password="password"
         embeddings = OpenAIEmbeddings()
-        vectorestore = Neo4jVector.from_documents(
+        vector_store = Neo4jVector.from_documents(
             embedding=embeddings,
             documents=docs,
-            url=url
+            url=url,
             username=username,
             password=password,
         )
@@ -676,7 +676,7 @@ class Neo4jVector(VectorStore):
                 to balance query accuracy and performance.
 
         Returns:
-            List of `Document` objects most similar to the query and score for each
+            List of `Document` objects most similar to the query and score for each.
         """
         embedding = self.embedding.embed_query(query)
         docs = self.similarity_search_with_score_by_vector(
@@ -804,9 +804,15 @@ class Neo4jVector(VectorStore):
                         if isinstance(result["text"], dict)
                         else result["text"]
                     ),
-                    metadata={
-                        k: v for k, v in result["metadata"].items() if v is not None
-                    },
+                    metadata=(
+                        {
+                            k: v
+                            for k, v in result.get("metadata", {}).items()
+                            if v is not None
+                        }
+                        if result.get("metadata")
+                        else {}
+                    ),
                 ),
                 result["score"],
             )
