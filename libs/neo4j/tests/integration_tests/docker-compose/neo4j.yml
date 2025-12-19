@@ -1,5 +1,27 @@
-version: "3.8"
 services:
+  mock-oauth2-server:
+    image: ghcr.io/navikt/mock-oauth2-server:2.1.10
+    container_name: mock-oauth2-server
+    hostname: mock-oauth2-server
+    expose:
+      - "9090"
+    environment:
+      SERVER_PORT: 9090
+      JSON_CONFIG_PATH: /config.json
+    volumes:
+      - ./oauth2-config.json:/config.json:ro
+  nginx-ssl-proxy:
+    image: nginx:alpine
+    container_name: nginx-ssl-proxy
+    hostname: oauth2-server
+    ports:
+      - 9443:443
+    depends_on:
+      - mock-oauth2-server
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+
   neo4j:
     image: neo4j:5.24.2-enterprise
     restart: on-failure:0
@@ -8,8 +30,23 @@ services:
     ports:
       - 7474:7474
       - 7687:7687
+    depends_on:
+      - nginx-ssl-proxy
     environment:
       NEO4J_AUTH: neo4j/password
       NEO4J_ACCEPT_LICENSE_AGREEMENT: "eval"
       NEO4J_PLUGINS: "[\"apoc\"]"
+      NEO4J_dbms_security_authentication__providers: "native,oidc-test"
+      NEO4J_dbms_security_authorization__providers: "native,oidc-test"
+      NEO4J_dbms_security_oidc_test_display__name: "Test OIDC"
+      NEO4J_dbms_security_oidc_test_issuer: "https://oauth2-server/test"
+      NEO4J_dbms_security_oidc_test_jwks__uri: "https://oauth2-server/test/jwks"
+      NEO4J_dbms_security_oidc_test_audience: "neo4j"
+      NEO4J_dbms_security_oidc_test_params: "principal=sub;client_id=neo4j;response_type=code;scope=openid profile email"
+      NEO4J_dbms_security_oidc_test_claims_username: "sub"
+      NEO4J_dbms_security_oidc_test_claims_groups: "groups"
+      NEO4J_dbms_security_oidc_test_authorization_group__to__role__mapping: "admin=admin"
+    volumes:
+      - ./certs:/certs:ro
+    entrypoint: ["/bin/bash", "-c", "keytool -delete -alias oauth2-server -keystore /opt/java/openjdk/lib/security/cacerts -storepass changeit 2>/dev/null; keytool -importcert -file /certs/server.crt -alias oauth2-server -keystore /opt/java/openjdk/lib/security/cacerts -storepass changeit -noprompt && /startup/docker-entrypoint.sh neo4j"]
 

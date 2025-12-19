@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Type
 
 import neo4j
 from langchain_core.utils import get_from_dict_or_env
+from neo4j import Auth, basic_auth, bearer_auth
 from neo4j_graphrag.schema import (
     BASE_ENTITY_LABEL,
     _value_sanitize,
@@ -94,6 +95,7 @@ class Neo4jGraph(GraphStore):
         url: Optional[str] = None,
         username: Optional[str] = None,
         password: Optional[str] = None,
+        token: Optional[str] = None,
         database: Optional[str] = None,
         timeout: Optional[float] = None,
         sanitize: bool = False,
@@ -108,6 +110,7 @@ class Neo4jGraph(GraphStore):
             url: The URL of the Neo4j database server.
             username: The username for database authentication.
             password: The password for database authentication.
+            token: The authentication token for database authentication.
             database: The name of the database to connect to. Default is `'neo4j'`.
             timeout: The timeout for transactions in seconds. Useful for terminating
                 long-running queries.
@@ -126,8 +129,11 @@ class Neo4jGraph(GraphStore):
         """
 
         url = get_from_dict_or_env({"url": url}, "url", "NEO4J_URI")
-        # If the username and password are "", assume Neo4j auth is disabled
-        if username == "" and password == "":
+        auth: Optional[Auth] = None
+        if token is not None:
+            auth = bearer_auth(token)
+        elif username == "" and password == "":
+            # If the username and password are "", assume Neo4j auth is disabled
             auth = None
         else:
             username = get_from_dict_or_env(
@@ -140,7 +146,7 @@ class Neo4jGraph(GraphStore):
                 "password",
                 "NEO4J_PASSWORD",
             )
-            auth = (username, password)
+            auth = basic_auth(username, password)
         database = get_from_dict_or_env(
             {"database": database}, "database", "NEO4J_DATABASE", "neo4j"
         )
@@ -170,7 +176,7 @@ class Neo4jGraph(GraphStore):
         except neo4j.exceptions.AuthError:
             raise ValueError(
                 "Could not connect to Neo4j database. "
-                "Please ensure that the username and password are correct"
+                "Please ensure that the credentials are correct"
             )
         # Set schema
         if refresh_schema:

@@ -2,7 +2,7 @@ from typing import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
-from neo4j import Record
+from neo4j import Record, bearer_auth
 from neo4j._work.summary import ResultSummary
 from neo4j.exceptions import ClientError, ConfigurationError, Neo4jError
 from neo4j_graphrag.schema import LIST_LIMIT
@@ -126,6 +126,35 @@ def test_neo4j_graph_init_with_empty_credentials() -> None:
             url="bolt://localhost:7687", username="", password="", refresh_schema=False
         )
         mock_driver.assert_called_with("bolt://localhost:7687", auth=None)
+
+
+def test_neo4j_graph_init_with_token() -> None:
+    """Test the __init__ method when only token is provided (no username/password)."""
+    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
+        mock_driver_instance = MagicMock()
+        mock_driver.return_value = mock_driver_instance
+        mock_driver_instance.verify_connectivity.return_value = None
+        Neo4jGraph(
+            url="bolt://localhost:7687",
+            token="my-bearer-token",
+            refresh_schema=False,
+        )
+        mock_driver.assert_called_with(
+            "bolt://localhost:7687", auth=bearer_auth("my-bearer-token")
+        )
+
+
+def test_neo4j_graph_init_without_credentials() -> None:
+    """Test the __init__ method raises error when no credentials are provided."""
+    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
+        mock_driver_instance = MagicMock()
+        mock_driver.return_value = mock_driver_instance
+        mock_driver_instance.verify_connectivity.return_value = None
+        with pytest.raises(ValueError, match="pass `username` as a named parameter."):
+            Neo4jGraph(
+                url="bolt://localhost:7687",
+                refresh_schema=False,
+            )
 
 
 def test_neo4j_graph_init_driver_config_err() -> None:
