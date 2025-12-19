@@ -899,6 +899,7 @@ def test_similarity_search_with_all_fields_present(neo4j_vector_factory: Any) ->
     assert docs[1][0].metadata == {"key": "value2"}
     assert docs[1][1] == 0.85
 
+
 def test_from_existing_index_with_text_node_properties(
     neo4j_vector_factory: Any,
 ) -> None:
