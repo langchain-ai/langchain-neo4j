@@ -929,6 +929,8 @@ class Neo4jVector(VectorStore):
         search_type: SearchType = DEFAULT_SEARCH_TYPE,
         keyword_index_name: Optional[str] = None,
         embedding_dimension: Optional[int] = None,
+        text_node_properties: Optional[List[str]] = None,
+        retrieval_query: str = "",
         **kwargs: Any,
     ) -> Neo4jVector:
         """
@@ -938,6 +940,23 @@ class Neo4jVector(VectorStore):
         Neo4j credentials are required in the form of `url`, `username`,
         and `password` and optional `database` parameters along with
         the `index_name` definition.
+
+        Args:
+            embedding: Embeddings object to use for embedding generation.
+            index_name: Name of the existing vector index.
+            search_type: Type of search to perform (default: VECTOR).
+            keyword_index_name: Name of the keyword index for hybrid search.
+            embedding_dimension: Dimension of the embeddings.
+            text_node_properties: Optional list of node properties to use as text
+                content. When provided, the retrieval query will concatenate these
+                properties. If not provided, uses the single `text_node_property`
+                (default: "text").
+            retrieval_query: Optional custom retrieval query. If provided, takes
+                precedence over auto-generated queries.
+            **kwargs: Additional arguments passed to the Neo4jVector constructor.
+
+        Returns:
+            Neo4jVector: An instance connected to the existing index.
         """
 
         if search_type == SearchType.HYBRID and not keyword_index_name:
@@ -955,6 +974,7 @@ class Neo4jVector(VectorStore):
         )
 
         # Check if the vector index already exists
+        # This also retrieves and sets node_label and embedding_node_property
         existing_index_info = store.retrieve_existing_index()
         if existing_index_info:
             embedding_dimension_from_existing, index_type = existing_index_info
@@ -1009,6 +1029,15 @@ class Neo4jVector(VectorStore):
                     raise ValueError(
                         "Vector and keyword index don't index the same node label"
                     )
+
+        # Construct retrieval query for multiple text properties if provided
+        # Uses embedding_node_property retrieved from the existing index
+        if retrieval_query:
+            store.retrieval_query = retrieval_query
+        elif text_node_properties:
+            store.retrieval_query = _text_node_props_retrieval_query(
+                text_node_properties, store.embedding_node_property
+            )
 
         return store
 
@@ -1161,14 +1190,8 @@ class Neo4jVector(VectorStore):
             )
         # Prefer retrieval query from params, otherwise construct it
         if not retrieval_query:
-            retrieval_query = (
-                f"RETURN reduce(str='', k IN {text_node_properties} |"
-                " str + '\\n' + k + ': ' + coalesce(node[k], '')) AS text, "
-                "node {.*, `"
-                + embedding_node_property
-                + "`: Null, id: Null, "
-                + ", ".join([f"`{prop}`: Null" for prop in text_node_properties])
-                + "} AS metadata, score"
+            retrieval_query = _text_node_props_retrieval_query(
+                text_node_properties, embedding_node_property
             )
         store = cls(
             embedding=embedding,
@@ -1353,3 +1376,28 @@ class Neo4jVector(VectorStore):
                 f" for distance_strategy of {self._distance_strategy}."
                 "Consider providing relevance_score_fn to PGVector constructor."
             )
+
+
+def _text_node_props_retrieval_query(
+    text_node_properties: List[str], embedding_node_property: str
+) -> str:
+    """
+    Create a Cypher retrieval query that concatenates multiple
+    text node properties.
+
+    Args:
+        text_node_properties: List of node properties to use as text content.
+
+    Returns:
+        A Cypher query string that concatenates the specified
+        text node properties.
+    """
+    return (
+        f"RETURN reduce(str='', k IN {text_node_properties} |"
+        " str + '\\n' + k + ': ' + coalesce(node[k], '')) AS text, "
+        "node {.*, `"
+        + embedding_node_property
+        + "`: Null, id: Null, "
+        + ", ".join([f"`{prop}`: Null" for prop in text_node_properties])
+        + "} AS metadata, score"
+    )
