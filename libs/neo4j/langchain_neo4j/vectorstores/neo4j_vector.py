@@ -1029,7 +1029,7 @@ class Neo4jVector(VectorStore):
         if retrieval_query:
             store.retrieval_query = retrieval_query
         elif text_node_properties:
-            store.retrieval_query = create_retrieval_query(
+            store.retrieval_query = _text_node_props_retrieval_query(
                 text_node_properties, store.embedding_node_property
             )
 
@@ -1184,7 +1184,7 @@ class Neo4jVector(VectorStore):
             )
         # Prefer retrieval query from params, otherwise construct it
         if not retrieval_query:
-            retrieval_query = create_retrieval_query(
+            retrieval_query = _text_node_props_retrieval_query(
                 text_node_properties, embedding_node_property
             )
         store = cls(
@@ -1372,7 +1372,7 @@ class Neo4jVector(VectorStore):
             )
 
 
-def create_retrieval_query(
+def _text_node_props_retrieval_query(
     text_node_properties: List[str], embedding_node_property: str
 ) -> str:
     """
