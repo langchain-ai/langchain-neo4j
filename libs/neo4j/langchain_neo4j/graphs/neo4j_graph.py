@@ -130,24 +130,23 @@ class Neo4jGraph(GraphStore):
 
         url = get_from_dict_or_env({"url": url}, "url", "NEO4J_URI")
         auth: Optional[Auth] = None
-        # If the username and password are "", assume Neo4j auth is disabled
-        if username == "" and password == "":
+        if token is not None:
+            auth = bearer_auth(token)
+        elif username == "" and password == "":
+            # If the username and password are "", assume Neo4j auth is disabled
             auth = None
         else:
-            if token is not None:
-                auth = bearer_auth(token)
-            else:
-                username = get_from_dict_or_env(
-                    {"username": username},
-                    "username",
-                    "NEO4J_USERNAME",
-                )
-                password = get_from_dict_or_env(
-                    {"password": password},
-                    "password",
-                    "NEO4J_PASSWORD",
-                )
-                auth = basic_auth(username, password)
+            username = get_from_dict_or_env(
+                {"username": username},
+                "username",
+                "NEO4J_USERNAME",
+            )
+            password = get_from_dict_or_env(
+                {"password": password},
+                "password",
+                "NEO4J_PASSWORD",
+            )
+            auth = basic_auth(username, password)
         database = get_from_dict_or_env(
             {"database": database}, "database", "NEO4J_DATABASE", "neo4j"
         )
