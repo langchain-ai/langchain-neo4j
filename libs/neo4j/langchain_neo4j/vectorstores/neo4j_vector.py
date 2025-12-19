@@ -720,7 +720,7 @@ class Neo4jVector(VectorStore):
 
         Returns:
             A list of tuples, each containing a `Document` object and its similarity
-                score (defaults to 0.0 if score is not returned by the retrieval query).
+                score.
         """
         if filter and not self.support_metadata_filter:
             raise ValueError(
@@ -814,7 +814,7 @@ class Neo4jVector(VectorStore):
                         else {}
                     ),
                 ),
-                result.get("score", 0.0),
+                result["score"],
             )
             for result in results
         ]
