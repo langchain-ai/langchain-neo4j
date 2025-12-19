@@ -2,7 +2,7 @@ import os
 import urllib
 
 import pytest
-import requests # type: ignore[import-untyped]
+import requests  # type: ignore[import-untyped]
 from langchain_core.documents import Document
 from neo4j_graphrag.schema import NODE_PROPERTIES_QUERY, REL_PROPERTIES_QUERY, REL_QUERY
 
