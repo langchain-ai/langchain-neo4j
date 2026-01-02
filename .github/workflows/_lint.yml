@@ -46,7 +46,7 @@ jobs:
         # https://github.com/langchain-ai/langchain/pull/10249/files#diff-935185cd488d015f026dcd9e19616ff62863e8cde8c0bee70318d3ccbca98341
         #
         # If you change this configuration, make sure to change the `cache-key`
-        # in the `poetry_setup` action above to stop using the old cache.
+        # in the `uv_setup` action above to stop using the old cache.
         # It doesn't matter how you change it, any change will cause a cache-bust.
         working-directory: ${{ inputs.working-directory }}
         run: |
