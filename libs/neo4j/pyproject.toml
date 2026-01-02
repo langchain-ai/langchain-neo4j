@@ -1,70 +1,48 @@
-[tool.poetry]
+[project]
 name = "langchain-neo4j"
 version = "0.6.0"
 description = "An integration package connecting Neo4j and LangChain"
-authors = []
 readme = "README.md"
 repository = "https://github.com/langchain-ai/langchain-neo4j"
 license = "MIT"
+requires-python = ">=3.10,<3.14"
+dependencies = [
+    "langchain-classic>=1.0.0,<2.0.0",
+    "langchain-core>=1.0.0,<2.0.0",
+    "neo4j>=5.25.0,<6.0.0",
+    "neo4j-graphrag>=1.9.0,<2.0.0",
+]
 
-[tool.poetry.urls]
+[project.urls]
 "Source Code" = "https://github.com/langchain-ai/langchain-neo4j/tree/main/libs/neo4j"
 "Release Notes" = "https://github.com/langchain-ai/langchain-neo4j/releases"
 
-[tool.poetry.dependencies]
-python = ">=3.10,<3.14"
-langchain-core = "^1.0.0"
-neo4j = "^5.25.0"
-neo4j-graphrag = "^1.9.0"
-langchain-classic = "^1.0.0"
-
-[tool.poetry.group.mmr]
-optional = true
-
-[tool.poetry.group.mmr.dependencies]
-numpy = [
-  { version = ">=1.20.0,<=2.0.2", python = ">=3.9,<3.10" },
-  { version = "^2.1.0", python = ">=3.10" }
+[project.optional-dependencies]
+mmr = [
+    "numpy>=2.1.0,<3.0.0",
 ]
 
-[tool.poetry.group.test]
-optional = true
+[dependency-groups]
+codespell = [
+    "codespell>=2.2.6,<3.0.0",
+]
+test = [
+    "pytest>=7.4.3,<8.0.0",
+    "pytest-asyncio>=0.23.2,<0.24.0",
+    "pytest-cov>=6.0.0,<7.0.0",
+    "pytest-socket>=0.7.0,<0.8.0",
+    "pytest-watcher>=0.3.4,<0.4.0",
+]
+typing = [
+    "mypy>=1.10,<2.0.0",
+    "types-pyyaml>=6.0.12.20240917,<7.0.0",
+]
+lint = [
+    "ruff>=0.5,<0.6",
+]
+dev = []
+test_integration = []
 
-[tool.poetry.group.test.dependencies]
-pytest = "^7.4.3"
-pytest-asyncio = "^0.23.2"
-pytest-socket = "^0.7.0"
-pytest-watcher = "^0.3.4"
-langchain-core = {git = "https://github.com/langchain-ai/langchain.git", subdirectory = "libs/core"}
-pytest-cov = "^6.0.0"
-
-[tool.poetry.group.codespell]
-optional = true
-
-[tool.poetry.group.codespell.dependencies]
-codespell = "^2.2.6"
-
-[tool.poetry.group.test_integration]
-optional = true
-
-[tool.poetry.group.test_integration.dependencies]
-
-[tool.poetry.group.lint]
-optional = true
-
-[tool.poetry.group.lint.dependencies]
-ruff = "^0.5"
-
-[tool.poetry.group.typing.dependencies]
-mypy = "^1.10"
-types-pyyaml = "^6.0.12.20240917"
-langchain-core = {git = "https://github.com/langchain-ai/langchain.git", subdirectory = "libs/core"}
-
-[tool.poetry.group.dev]
-optional = true
-
-[tool.poetry.group.dev.dependencies]
-langchain-core = {git = "https://github.com/langchain-ai/langchain.git", subdirectory = "libs/core"}
 
 [tool.ruff.lint]
 select = [
@@ -81,8 +59,8 @@ disallow_untyped_defs = "True"
 omit = ["tests/*"]
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 # --strict-markers will raise errors on unknown marks.
