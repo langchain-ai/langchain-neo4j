@@ -114,13 +114,15 @@ def test_cypher_return_correct_schema(neo4j_credentials: Neo4jCredentials) -> No
     graph.refresh_schema()
 
     node_properties = graph.query(
-        NODE_PROPERTIES_QUERY, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL]}
+        NODE_PROPERTIES_QUERY,
+        params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL], "SAMPLE": 1000},
     )
     relationships_properties = graph.query(
-        REL_PROPERTIES_QUERY, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL]}
+        REL_PROPERTIES_QUERY,
+        params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL], "SAMPLE": 1000},
     )
     relationships = graph.query(
-        REL_QUERY, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL]}
+        REL_QUERY, params={"EXCLUDED_LABELS": [BASE_ENTITY_LABEL], "SAMPLE": 1000}
     )
 
     expected_node_properties = [
@@ -441,9 +443,9 @@ def test_neo4j_error_after_close(neo4j_credentials: Neo4jCredentials) -> None:
     # Test various operations after close
     try:
         graph.refresh_schema()
-        assert (
-            False
-        ), "Expected RuntimeError when refreshing schema on closed connection"
+        assert False, (
+            "Expected RuntimeError when refreshing schema on closed connection"
+        )
     except RuntimeError as e:
         assert "connection has been closed" in str(e)
 
