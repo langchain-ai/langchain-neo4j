@@ -3,8 +3,8 @@ name = "langchain-neo4j"
 version = "0.6.0"
 description = "An integration package connecting Neo4j and LangChain"
 readme = "README.md"
-repository = "https://github.com/langchain-ai/langchain-neo4j"
-license = "MIT"
+license = {text = "MIT"}
+authors = []
 requires-python = ">=3.10,<3.14"
 dependencies = [
     "langchain-classic>=1.0.0,<2.0.0",
@@ -14,6 +14,7 @@ dependencies = [
 ]
 
 [project.urls]
+"Repository" = "https://github.com/langchain-ai/langchain-neo4j"
 "Source Code" = "https://github.com/langchain-ai/langchain-neo4j/tree/main/libs/neo4j"
 "Release Notes" = "https://github.com/langchain-ai/langchain-neo4j/releases"
 
