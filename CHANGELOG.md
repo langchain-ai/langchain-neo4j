@@ -2,6 +2,20 @@
 
 ## Next
 
+### Added
+
+- Added bearer token auth support to `Neo4jGraph` (via `token`).
+
+## Changed
+
+- Switched project/dependency management from Poetry to uv.
+- Updated docstrings/reference-doc formatting for the new LangChain reference docs site (MkDocs/Markdown).
+
+### Fixed
+
+- `Neo4jVector` now handles missing `metadata` in retrieval results.
+- Fixed `Neo4jVector.from_existing_index` retrieval query generation when using multiple `text_node_properties`.
+
 ## 0.6.0
 
 ### Added

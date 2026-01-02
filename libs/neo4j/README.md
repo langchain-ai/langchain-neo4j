@@ -96,12 +96,6 @@ chain.invoke({"query": "Who starred in Top Gun?"})
 
 ## 🧪 Tests
 
-Install the test dependencies to run the tests:
-
-```bash
-poetry install --with test,test_integration,mmr
-```
-
 ### Unit Tests
 
 Run the unit tests using:
@@ -127,12 +121,6 @@ make tests
 
 ## 🧹 Code Formatting and Linting
 
-Install the codespell, lint, and typing dependencies to lint and format your code:
-
-```bash
-poetry install --with codespell,lint,typing,mmr
-```
-
 To format your code, run:
 
 ```bash
@@ -143,4 +131,10 @@ To lint it, run:
 
 ```bash
 make lint
+```
+
+To format the `pyproject. ` file, run:
+
+```bash
+uv run pyprojectsort pyproject.toml
 ```
