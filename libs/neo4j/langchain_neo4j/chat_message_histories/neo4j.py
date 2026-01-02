@@ -118,8 +118,7 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
         """Clear session memory from Neo4j
 
         Args:
-            delete_session_node (bool): Whether to delete the session node.
-                Defaults to False.
+            delete_session_node: Whether to delete the session node.
         """
         if delete_session_node:
             self._driver.execute_query(

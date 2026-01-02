@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, List, Optional, Union
 
-from langchain.chains.base import Chain
+from langchain_classic.chains.base import Chain
 from langchain_core.callbacks import CallbackManagerForChainRun
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import (
@@ -103,16 +103,18 @@ def get_function_response(
 class GraphCypherQAChain(Chain):
     """Chain for question-answering against a graph by generating Cypher statements.
 
-    *Security note*: Make sure that the database connection uses credentials
-        that are narrowly-scoped to only include necessary permissions.
-        Failure to do so may result in data corruption or loss, since the calling
-        code may attempt commands that would result in deletion, mutation
-        of data if appropriately prompted or reading sensitive data if such
-        data is present in the database.
+    !!! warning "Security note"
+
+        Make sure that the database connection uses credentials that are narrowly-scoped
+        to only include necessary permissions. Failure to do so may result in data
+        corruption or loss, since the calling code may attempt commands that would
+        result in deletion, mutation of data if appropriately prompted or reading
+        sensitive data if such data is present in the database.
+
         The best way to guard against such negative outcomes is to (as appropriate)
         limit the permissions granted to the credentials used with this tool.
 
-        See https://python.langchain.com/docs/security for more information.
+        See https://docs.langchain.com/oss/python/security-policy for more information.
     """
 
     graph: GraphStore = Field(exclude=True)
@@ -121,7 +123,7 @@ class GraphCypherQAChain(Chain):
     graph_schema: str
     input_key: str = "query"  #: :meta private:
     output_key: str = "result"  #: :meta private:
-    example_key: str = "examples"
+    example_key: str = "examples"  #: :meta private:
     top_k: int = 10
     """Number of results to return from the query"""
     return_intermediate_steps: bool = False
@@ -135,16 +137,18 @@ class GraphCypherQAChain(Chain):
     allow_dangerous_requests: bool = False
     """Forced user opt-in to acknowledge that the chain can make dangerous requests.
     
-    *Security note*: Make sure that the database connection uses credentials
-        that are narrowly-scoped to only include necessary permissions.
-        Failure to do so may result in data corruption or loss, since the calling
-        code may attempt commands that would result in deletion, mutation
-        of data if appropriately prompted or reading sensitive data if such
-        data is present in the database.
+    !!! warning "Security note"
+
+        Make sure that the database connection uses credentials that are narrowly-scoped
+        to only include necessary permissions. Failure to do so may result in data
+        corruption or loss, since the calling code may attempt commands that would
+        result in deletion, mutation of data if appropriately prompted or reading
+        sensitive data if such data is present in the database.
+        
         The best way to guard against such negative outcomes is to (as appropriate)
         limit the permissions granted to the credentials used with this tool.
 
-        See https://python.langchain.com/docs/security for more information.
+        See https://docs.langchain.com/oss/python/security-policy for more information.
     """
 
     def __init__(self, **kwargs: Any) -> None:
@@ -160,23 +164,18 @@ class GraphCypherQAChain(Chain):
                 "present in the database."
                 "Only use this chain if you understand the risks and have taken the "
                 "necessary precautions. "
-                "See https://python.langchain.com/docs/security for more information."
+                "See https://docs.langchain.com/oss/python/security-policy for more "
+                "information."
             )
 
     @property
     def input_keys(self) -> List[str]:
-        """Return the input keys.
-
-        :meta private:
-        """
+        """Return the input keys."""
         return [self.input_key]
 
     @property
     def output_keys(self) -> List[str]:
-        """Return the output keys.
-
-        :meta private:
-        """
+        """Return the output keys."""
         _output_keys = [self.output_key]
         return _output_keys
 

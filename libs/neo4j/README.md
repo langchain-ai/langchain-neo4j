@@ -47,10 +47,9 @@ The `Neo4jVector` class provides functionality for managing a Neo4j vector store
 It enables you to create new vector indexes, add vectors to existing indexes, and perform queries on indexes.
 
 ```python
-from langchain.docstore.document import Document
-from langchain_openai import OpenAIEmbeddings
-
+from langchain_classic.docstore.document import Document
 from langchain_neo4j import Neo4jVector
+from langchain_openai import OpenAIEmbeddings
 
 # Create a vector store from some documents and embeddings
 docs = [
@@ -83,9 +82,8 @@ It uses an LLM and the database's schema to translate a user's question into a C
 The resulting data is then sent along with the user's question to the LLM to generate a natural language response.
 
 ```python
-from langchain_openai import ChatOpenAI
-
 from langchain_neo4j import GraphCypherQAChain, Neo4jGraph
+from langchain_openai.chat_models import ChatOpenAI
 
 llm = ChatOpenAI(
     temperature=0,
@@ -93,7 +91,7 @@ llm = ChatOpenAI(
 )
 graph = Neo4jGraph(url="bolt://localhost:7687", username="neo4j", password="password")
 chain = GraphCypherQAChain.from_llm(llm=llm, graph=graph, allow_dangerous_requests=True)
-chain.run("Who starred in Top Gun?")
+chain.invoke({"query": "Who starred in Top Gun?"})
 ```
 
 ## 🧪 Tests

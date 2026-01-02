@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Type
 
 import neo4j
 from langchain_core.utils import get_from_dict_or_env
+from neo4j import Auth, basic_auth, bearer_auth
 from neo4j_graphrag.schema import (
     BASE_ENTITY_LABEL,
     _value_sanitize,
@@ -75,33 +76,18 @@ def _remove_backticks(text: str) -> str:
 class Neo4jGraph(GraphStore):
     """Neo4j database wrapper for various graph operations.
 
-    Parameters:
-    url (Optional[str]): The URL of the Neo4j database server.
-    username (Optional[str]): The username for database authentication.
-    password (Optional[str]): The password for database authentication.
-    database (str): The name of the database to connect to. Default is 'neo4j'.
-    timeout (Optional[float]): The timeout for transactions in seconds.
-            Useful for terminating long-running queries.
-            By default, there is no timeout set.
-    sanitize (bool): A flag to indicate whether to remove lists with
-            more than 128 elements from results. Useful for removing
-            embedding-like properties from database responses. Default is False.
-    refresh_schema (bool): A flag whether to refresh schema information
-            at initialization. Default is True.
-    enhanced_schema (bool): A flag whether to scan the database for
-            example values and use them in the graph schema. Default is False.
-    driver_config (Dict): Configuration passed to Neo4j Driver.
+    !!! warning "Security note"
 
-    *Security note*: Make sure that the database connection uses credentials
-        that are narrowly-scoped to only include necessary permissions.
-        Failure to do so may result in data corruption or loss, since the calling
-        code may attempt commands that would result in deletion, mutation
-        of data if appropriately prompted or reading sensitive data if such
-        data is present in the database.
+        Make sure that the database connection uses credentials that are narrowly-scoped
+        to only include necessary permissions. Failure to do so may result in data
+        corruption or loss, since the calling code may attempt commands that would
+        result in deletion, mutation of data if appropriately prompted or reading
+        sensitive data if such data is present in the database.
+
         The best way to guard against such negative outcomes is to (as appropriate)
         limit the permissions granted to the credentials used with this tool.
 
-        See https://python.langchain.com/docs/security for more information.
+        See https://docs.langchain.com/oss/python/security-policy for more information.
     """
 
     def __init__(
@@ -109,6 +95,7 @@ class Neo4jGraph(GraphStore):
         url: Optional[str] = None,
         username: Optional[str] = None,
         password: Optional[str] = None,
+        token: Optional[str] = None,
         database: Optional[str] = None,
         timeout: Optional[float] = None,
         sanitize: bool = False,
@@ -117,11 +104,36 @@ class Neo4jGraph(GraphStore):
         driver_config: Optional[Dict] = None,
         enhanced_schema: bool = False,
     ) -> None:
-        """Create a new Neo4j graph wrapper instance."""
+        """Create a new Neo4j graph wrapper instance.
+
+        Args:
+            url: The URL of the Neo4j database server.
+            username: The username for database authentication.
+            password: The password for database authentication.
+            token: The authentication token for database authentication.
+            database: The name of the database to connect to. Default is `'neo4j'`.
+            timeout: The timeout for transactions in seconds. Useful for terminating
+                long-running queries.
+
+                !!! note
+
+                    By default, there is no timeout set.
+            sanitize: A flag to indicate whether to remove lists with more than 128
+                elements from results. Useful for removing embedding-like properties
+                from database responses.
+            refresh_schema: A flag whether to refresh schema information at
+                initialization.
+            driver_config: Configuration passed to Neo4j Driver.
+            enhanced_schema: A flag whether to scan the database for example values and
+                use them in the graph schema.
+        """
 
         url = get_from_dict_or_env({"url": url}, "url", "NEO4J_URI")
-        # if username and password are "", assume Neo4j auth is disabled
-        if username == "" and password == "":
+        auth: Optional[Auth] = None
+        if token is not None:
+            auth = bearer_auth(token)
+        elif username == "" and password == "":
+            # If the username and password are "", assume Neo4j auth is disabled
             auth = None
         else:
             username = get_from_dict_or_env(
@@ -134,7 +146,7 @@ class Neo4jGraph(GraphStore):
                 "password",
                 "NEO4J_PASSWORD",
             )
-            auth = (username, password)
+            auth = basic_auth(username, password)
         database = get_from_dict_or_env(
             {"database": database}, "database", "NEO4J_DATABASE", "neo4j"
         )
@@ -164,7 +176,7 @@ class Neo4jGraph(GraphStore):
         except neo4j.exceptions.AuthError:
             raise ValueError(
                 "Could not connect to Neo4j database. "
-                "Please ensure that the username and password are correct"
+                "Please ensure that the credentials are correct"
             )
         # Set schema
         if refresh_schema:
@@ -210,13 +222,13 @@ class Neo4jGraph(GraphStore):
         """Query Neo4j database.
 
         Args:
-            query (str): The Cypher query to execute.
-            params (dict): The parameters to pass to the query.
-            session_params (dict): Parameters to pass to the session used for executing
-                the query.
+            query: The Cypher query to execute.
+            params: The parameters to pass to the query.
+            session_params: Parameters to pass to the session used for executing the
+                query.
 
         Returns:
-            List[Dict[str, Any]]: The list of dictionaries containing the query results.
+            The list of dictionaries containing the query results.
 
         Raises:
             RuntimeError: If the connection has been closed.
@@ -294,22 +306,21 @@ class Neo4jGraph(GraphStore):
     ) -> None:
         """
         This method constructs nodes and relationships in the graph based on the
-        provided GraphDocument objects.
+        provided `GraphDocument` objects.
 
-        Parameters:
-        - graph_documents (List[GraphDocument]): A list of GraphDocument objects
-        that contain the nodes and relationships to be added to the graph. Each
-        GraphDocument should encapsulate the structure of part of the graph,
-        including nodes, relationships, and optionally the source document information.
-        - include_source (bool, optional): If True, stores the source document
-        and links it to nodes in the graph using the MENTIONS relationship.
-        This is useful for tracing back the origin of data. Merges source
-        documents based on the `id` property from the source document metadata
-        if available; otherwise it calculates the MD5 hash of `page_content`
-        for merging process. Defaults to False.
-        - baseEntityLabel (bool, optional): If True, each newly created node
-        gets a secondary __Entity__ label, which is indexed and improves import
-        speed and performance. Defaults to False.
+        Args:
+            graph_documents: A list of `GraphDocument` objects that contain the nodes
+                and relationships to be added to the graph. Each `GraphDocument` should
+                encapsulate the structure of part of the graph, including nodes,
+                relationships, and optionally the source document information.
+            include_source: If `True`, stores the source document and links it to nodes
+                in the graph using the `MENTIONS` relationship. This is useful for
+                tracing back the origin of data. Merges source documents based on the
+                `id` property from the source document metadata if available; otherwise
+                it calculates the MD5 hash of `page_content` for merging process.
+            baseEntityLabel: If `True`, each newly created node gets a secondary
+                `__Entity__` label, which is indexed and improves import speed and
+                performance.
 
         Raises:
             RuntimeError: If the connection has been closed.
@@ -396,7 +407,7 @@ class Neo4jGraph(GraphStore):
         """
         Enter the runtime context for the Neo4j graph connection.
 
-        Enables use of the graph connection with the 'with' statement.
+        Enables use of the graph connection with the `'with'` statement.
         This method allows for automatic resource management and ensures
         that the connection is properly handled.
 
@@ -404,8 +415,10 @@ class Neo4jGraph(GraphStore):
             Neo4jGraph: The current graph connection instance
 
         Example:
+            ```python
             with Neo4jGraph(...) as graph:
                 graph.query(...)  # Connection automatically managed
+            ```
         """
         return self
 
@@ -418,18 +431,17 @@ class Neo4jGraph(GraphStore):
         """
         Exit the runtime context for the Neo4j graph connection.
 
-        This method is automatically called when exiting a 'with' statement.
+        This method is automatically called when exiting a `'with'` statement.
         It ensures that the database connection is closed, regardless of
         whether an exception occurred during the context's execution.
 
         Args:
             exc_type: The type of exception that caused the context to exit
-                      (None if no exception occurred)
             exc_val: The exception instance that caused the context to exit
-                     (None if no exception occurred)
-            exc_tb: The traceback for the exception (None if no exception occurred)
+            exc_tb: The traceback for the exception
 
-        Note:
+        !!! info
+
             Any exception is re-raised after the connection is closed.
         """
         self.close()
@@ -441,20 +453,26 @@ class Neo4jGraph(GraphStore):
         This method is called during garbage collection to ensure that
         database resources are released if not explicitly closed.
 
-        Caution:
-            - Do not rely on this method for deterministic resource cleanup
-            - Always prefer explicit .close() or context manager
+        !!! danger
 
-        Best practices:
+            - Do not rely on this method for deterministic resource cleanup
+            - Always prefer explicit `.close()` or context manager
+
+        !!! tip "Best practices"
+
             1. Use context manager:
-               with Neo4jGraph(...) as graph:
-                   ...
+                ```python
+                with Neo4jGraph(...) as graph:
+                    ...
+                ```
             2. Explicitly close:
-               graph = Neo4jGraph(...)
-               try:
-                   ...
-               finally:
-                   graph.close()
+                ```python
+                graph = Neo4jGraph(...)
+                try:
+                    ...
+                finally:
+                    graph.close()
+                ```
         """
         try:
             self.close()

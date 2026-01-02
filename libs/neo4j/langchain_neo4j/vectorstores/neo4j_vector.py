@@ -92,7 +92,7 @@ def dict_to_yaml_str(input_dict: Dict, indent: int = 0) -> str:
 
     Parameters:
     - input_dict (dict): The dictionary to convert.
-    - indent (int): The current indentation level.
+    - indent: The current indentation level.
 
     Returns:
     - str: The YAML-like string representation of the input dictionary.
@@ -112,57 +112,48 @@ def dict_to_yaml_str(input_dict: Dict, indent: int = 0) -> str:
 
 
 class Neo4jVector(VectorStore):
-    """`Neo4j` vector index.
+    """Neo4j vector index.
 
-    To use, you should have the ``neo4j`` python package installed.
+    To use, you should have the `neo4j` python package installed.
 
     Args:
         url: Neo4j connection url
         username: Neo4j username.
         password: Neo4j password
-        database: Optionally provide Neo4j database
-                  Defaults to "neo4j"
+        database: Optionally provide Neo4j database Defaults to `'neo4j'`
         embedding: Any embedding function implementing
             `langchain.embeddings.base.Embeddings` interface.
-        distance_strategy: The distance strategy to use. (default: COSINE)
-        search_type: The type of search to be performed, either
-            'vector' or 'hybrid'
+        distance_strategy: The distance strategy to use. (default: `COSINE`)
+        search_type: The type of search to be performed, either `'vector'` or `'hybrid'`
         node_label: The label used for nodes in the Neo4j database.
-            (default: "Chunk")
         embedding_node_property: The property name in Neo4j to store embeddings.
-            (default: "embedding")
         text_node_property: The property name in Neo4j to store the text.
-            (default: "text")
         retrieval_query: The Cypher query to be used for customizing retrieval.
             If empty, a default query will be used.
         index_type: The type of index to be used, either
-            'NODE' or 'RELATIONSHIP'
-        pre_delete_collection: If True, will delete existing data if it exists.
-            (default: False). Useful for testing.
-        effective_search_ratio: Controls the candidate pool size by multiplying $k
-            to balance query accuracy and performance.
+            `'NODE'` or `'RELATIONSHIP'`
+        pre_delete_collection: If `True`, will delete existing data if it exists.
+            Useful for testing.
         embedding_dimension: The dimension of the embeddings. If not provided,
             will query the embedding model to calculate the dimension.
 
     Example:
-        .. code-block:: python
+        ```python
+        from langchain_neo4j import Neo4jVector
+        from langchain_openai import OpenAIEmbeddings
 
-            from langchain_neo4j import Neo4jVector
-            from langchain_openai import OpenAIEmbeddings
-
-            url="bolt://localhost:7687"
-            username="neo4j"
-            password="password"
-            embeddings = OpenAIEmbeddings()
-            vectorestore = Neo4jVector.from_documents(
-                embedding=embeddings,
-                documents=docs,
-                url=url
-                username=username,
-                password=password,
-            )
-
-
+        url="bolt://localhost:7687"
+        username="neo4j"
+        password="password"
+        embeddings = OpenAIEmbeddings()
+        vector_store = Neo4jVector.from_documents(
+            embedding=embeddings,
+            documents=docs,
+            url=url,
+            username=username,
+            password=password,
+        )
+        ```
     """
 
     def __init__(
@@ -301,11 +292,11 @@ class Neo4jVector(VectorStore):
         """Query Neo4j database with retries and exponential backoff.
 
         Args:
-            query (str): The Cypher query to execute.
-            params (dict, optional): Dictionary of query parameters. Defaults to {}.
+            query: The Cypher query to execute.
+            params: Dictionary of query parameters.
 
         Returns:
-            List[Dict[str, Any]]: List of dictionaries containing the query results.
+            List of dictionaries containing the query results.
         """
         from neo4j import Query
         from neo4j.exceptions import Neo4jError
@@ -346,10 +337,9 @@ class Neo4jVector(VectorStore):
         """
         Check if the connected Neo4j database version supports vector indexing.
 
-        Queries the Neo4j database to retrieve its version and compares it
-        against a target version (5.11.0) that is known to support vector
-        indexing. Raises a ValueError if the connected Neo4j version is
-        not supported.
+        Queries the Neo4j database to retrieve its version and compares it against a
+        target version (`5.11.0`) that is known to support vector indexing. Raises a
+        `ValueError` if the connected Neo4j version is not supported.
         """
         version_tuple, is_aura, is_enterprise = get_version(
             self._driver, self._database
@@ -410,7 +400,7 @@ class Neo4jVector(VectorStore):
         with the specified name.
 
         Returns:
-            (Tuple): keyword index information
+            Keyword index information
         """
         if self.keyword_index_name:
             index_information = retrieve_fulltext_index_info(
@@ -556,13 +546,13 @@ class Neo4jVector(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Add embeddings to the vectorstore.
+        """Add embeddings to the `VectorStore`.
 
         Args:
-            texts: Iterable of strings to add to the vectorstore.
+            texts: Iterable of strings to add to the `VectorStore`.
             embeddings: List of list of embedding vectors.
             metadatas: List of metadatas associated with the texts.
-            kwargs: vectorstore specific parameters
+            kwargs: `VectorStore` specific parameters
         """
         if ids is None:
             ids = [md5(text.encode("utf-8")).hexdigest() for text in texts]
@@ -618,15 +608,15 @@ class Neo4jVector(VectorStore):
         ids: Optional[List[str]] = None,
         **kwargs: Any,
     ) -> List[str]:
-        """Run more texts through the embeddings and add to the vectorstore.
+        """Run more texts through the embeddings and add to the `VectorStore`.
 
         Args:
-            texts: Iterable of strings to add to the vectorstore.
+            texts: Iterable of strings to add to the `VectorStore`.
             metadatas: Optional list of metadatas associated with the texts.
-            kwargs: vectorstore specific parameters
+            kwargs: `VectorStore` specific parameters
 
         Returns:
-            List of ids from adding the texts into the vectorstore.
+            List of IDs from adding the texts into the `VectorStore`.
         """
         embeddings = self.embedding.embed_documents(list(texts))
         return self.add_embeddings(
@@ -645,18 +635,15 @@ class Neo4jVector(VectorStore):
         """Run similarity search with Neo4jVector.
 
         Args:
-            query (str): Query text to search for.
-            k (int): Number of results to return. Defaults to 4.
-            params (Dict[str, Any]): The search params for the index type.
-                Defaults to empty dict.
-            filter (Optional[Dict[str, Any]]): Dictionary of argument(s) to
-                    filter on metadata.
-                Defaults to None.
-            effective_search_ratio (int): Controls the candidate pool size
-               by multiplying $k to balance query accuracy and performance.
-               Defaults to 1.
+            query: Query text to search for.
+            k: Number of results to return.
+            params: The search params for the index type.
+            filter: Dictionary of argument(s) to
+                filter on metadata.
+            effective_search_ratio: Controls the candidate pool size
+                by multiplying `$k` to balance query accuracy and performance.
         Returns:
-            List of Documents most similar to the query.
+            List of `Document` objects most similar to the query.
         """
         embedding = self.embedding.embed_query(text=query)
         return self.similarity_search_by_vector(
@@ -682,18 +669,14 @@ class Neo4jVector(VectorStore):
 
         Args:
             query: Text to look up documents similar to.
-            k: Number of Documents to return. Defaults to 4.
-            params (Dict[str, Any]): The search params for the index type.
-                Defaults to empty dict.
-            filter (Optional[Dict[str, Any]]): Dictionary of argument(s) to
-                    filter on metadata.
-                Defaults to None.
-            effective_search_ratio (int): Controls the candidate pool size
-               by multiplying $k to balance query accuracy and performance.
-               Defaults to 1.
+            k: Number of `Document` objects to return.
+            params: The search params for the index type.
+            filter: Dictionary of argument(s) to filter on metadata.
+            effective_search_ratio: Controls the candidate pool size by multiplying `$k`
+                to balance query accuracy and performance.
 
         Returns:
-            List of Documents most similar to the query and score for each
+            List of `Document` objects most similar to the query and score for each.
         """
         embedding = self.embedding.embed_query(query)
         docs = self.similarity_search_with_score_by_vector(
@@ -723,29 +706,25 @@ class Neo4jVector(VectorStore):
         This method uses a Cypher query to find the top k documents that
         are most similar to a given embedding. The similarity is measured
         using a vector index in the Neo4j database. The results are returned
-        as a list of tuples, each containing a Document object and
+        as a list of tuples, each containing a `Document` object and
         its similarity score.
 
         Args:
-            embedding (List[float]): The embedding vector to compare against.
-            k (int, optional): The number of top similar documents to retrieve.
-            filter (Optional[Dict[str, Any]]): Dictionary of argument(s) to
-                    filter on metadata.
-                Defaults to None.
-            params (Dict[str, Any]): The search params for the index type.
-                Defaults to empty dict.
-            effective_search_ratio (int): Controls the candidate pool size
-               by multiplying $k to balance query accuracy and performance.
-               Defaults to 1.
+            embedding: The embedding vector to compare against.
+            k: The number of top similar documents to retrieve.
+            filter: Dictionary of argument(s) to
+                filter on metadata.
+            params: The search params for the index type.
+            effective_search_ratio: Controls the candidate pool size
+                by multiplying `$k` to balance query accuracy and performance.
 
         Returns:
-            List[Tuple[Document, float]]: A list of tuples, each containing
-                                a Document object and its similarity score.
+            A list of tuples, each containing a `Document` object and its similarity
+                score.
         """
         if filter and not self.support_metadata_filter:
             raise ValueError(
-                "Metadata filtering is only supported in "
-                "Neo4j version 5.18 or greater"
+                "Metadata filtering is only supported in Neo4j version 5.18 or greater"
             )
         entity_prefix = (
             "relationship" if self._index_type == IndexType.RELATIONSHIP else "node"
@@ -820,12 +799,20 @@ class Neo4jVector(VectorStore):
         docs = [
             (
                 Document(
-                    page_content=dict_to_yaml_str(result["text"])
-                    if isinstance(result["text"], dict)
-                    else result["text"],
-                    metadata={
-                        k: v for k, v in result["metadata"].items() if v is not None
-                    },
+                    page_content=(
+                        dict_to_yaml_str(result["text"])
+                        if isinstance(result["text"], dict)
+                        else result["text"]
+                    ),
+                    metadata=(
+                        {
+                            k: v
+                            for k, v in result.get("metadata", {}).items()
+                            if v is not None
+                        }
+                        if result.get("metadata")
+                        else {}
+                    ),
                 ),
                 result["score"],
             )
@@ -846,15 +833,12 @@ class Neo4jVector(VectorStore):
 
         Args:
             embedding: Embedding to look up documents similar to.
-            k: Number of Documents to return. Defaults to 4.
-            filter (Optional[Dict[str, Any]]): Dictionary of argument(s) to
-                    filter on metadata.
-                Defaults to None.
-            params (Dict[str, Any]): The search params for the index type.
-                Defaults to empty dict.
+            k: Number of `Document` objects to return.
+            filter: Dictionary of argument(s) to filter on metadata.
+            params: The search params for the index type.
 
         Returns:
-            List of Documents most similar to the query vector.
+            List of `Document` objects most similar to the query vector.
         """
         docs_and_scores = self.similarity_search_with_score_by_vector(
             embedding=embedding,
@@ -912,16 +896,16 @@ class Neo4jVector(VectorStore):
         and `password` and optional `database` parameters.
 
         Example:
-            .. code-block:: python
+            ```python
+            from langchain_neo4j import Neo4jVector
+            from langchain_openai import OpenAIEmbeddings
 
-                from langchain_neo4j import Neo4jVector
-                from langchain_openai import OpenAIEmbeddings
-
-                embeddings = OpenAIEmbeddings()
-                text_embeddings = embeddings.embed_documents(texts)
-                text_embedding_pairs = list(zip(texts, text_embeddings))
-                vectorstore = Neo4jVector.from_embeddings(
-                    text_embedding_pairs, embeddings)
+            embeddings = OpenAIEmbeddings()
+            text_embeddings = embeddings.embed_documents(texts)
+            text_embedding_pairs = list(zip(texts, text_embeddings))
+            vectorstore = Neo4jVector.from_embeddings(
+                text_embedding_pairs, embeddings)
+            ```
         """
         texts = [t[0] for t in text_embeddings]
         embeddings = [t[1] for t in text_embeddings]
@@ -945,6 +929,8 @@ class Neo4jVector(VectorStore):
         search_type: SearchType = DEFAULT_SEARCH_TYPE,
         keyword_index_name: Optional[str] = None,
         embedding_dimension: Optional[int] = None,
+        text_node_properties: Optional[List[str]] = None,
+        retrieval_query: str = "",
         **kwargs: Any,
     ) -> Neo4jVector:
         """
@@ -954,12 +940,28 @@ class Neo4jVector(VectorStore):
         Neo4j credentials are required in the form of `url`, `username`,
         and `password` and optional `database` parameters along with
         the `index_name` definition.
+
+        Args:
+            embedding: Embeddings object to use for embedding generation.
+            index_name: Name of the existing vector index.
+            search_type: Type of search to perform (default: VECTOR).
+            keyword_index_name: Name of the keyword index for hybrid search.
+            embedding_dimension: Dimension of the embeddings.
+            text_node_properties: Optional list of node properties to use as text
+                content. When provided, the retrieval query will concatenate these
+                properties. If not provided, uses the single `text_node_property`
+                (default: "text").
+            retrieval_query: Optional custom retrieval query. If provided, takes
+                precedence over auto-generated queries.
+            **kwargs: Additional arguments passed to the Neo4jVector constructor.
+
+        Returns:
+            Neo4jVector: An instance connected to the existing index.
         """
 
         if search_type == SearchType.HYBRID and not keyword_index_name:
             raise ValueError(
-                "keyword_index name has to be specified "
-                "when using hybrid search option"
+                "keyword_index name has to be specified when using hybrid search option"
             )
 
         store = cls(
@@ -972,6 +974,7 @@ class Neo4jVector(VectorStore):
         )
 
         # Check if the vector index already exists
+        # This also retrieves and sets node_label and embedding_node_property
         existing_index_info = store.retrieve_existing_index()
         if existing_index_info:
             embedding_dimension_from_existing, index_type = existing_index_info
@@ -1026,6 +1029,15 @@ class Neo4jVector(VectorStore):
                     raise ValueError(
                         "Vector and keyword index don't index the same node label"
                     )
+
+        # Construct retrieval query for multiple text properties if provided
+        # Uses embedding_node_property retrieved from the existing index
+        if retrieval_query:
+            store.retrieval_query = retrieval_query
+        elif text_node_properties:
+            store.retrieval_query = _text_node_props_retrieval_query(
+                text_node_properties, store.embedding_node_property
+            )
 
         return store
 
@@ -1156,16 +1168,20 @@ class Neo4jVector(VectorStore):
                     and existing graph.
 
         Example:
-        >>> neo4j_vector = Neo4jVector.from_existing_graph(
-        ...     embedding=my_embedding,
-        ...     node_label="Document",
-        ...     embedding_node_property="embedding",
-        ...     text_node_properties=["title", "content"]
-        ... )
+            ```python
+            neo4j_vector = Neo4jVector.from_existing_graph(
+                embedding=my_embedding,
+                node_label="Document",
+                embedding_node_property="embedding",
+                text_node_properties=["title", "content"]
+            )
+            ```
 
-        Note:
-        Neo4j credentials are required in the form of `url`, `username`, and `password`,
-        and optional `database` parameters passed as additional keyword arguments.
+        !!! note
+
+            Neo4j credentials are required in the form of `url`, `username`, and
+            `password`, and optional `database` parameters passed as additional keyword
+            arguments.
         """
         # Validate the list is not empty
         if not text_node_properties:
@@ -1174,14 +1190,8 @@ class Neo4jVector(VectorStore):
             )
         # Prefer retrieval query from params, otherwise construct it
         if not retrieval_query:
-            retrieval_query = (
-                f"RETURN reduce(str='', k IN {text_node_properties} |"
-                " str + '\\n' + k + ': ' + coalesce(node[k], '')) AS text, "
-                "node {.*, `"
-                + embedding_node_property
-                + "`: Null, id: Null, "
-                + ", ".join([f"`{prop}`: Null" for prop in text_node_properties])
-                + "} AS metadata, score"
+            retrieval_query = _text_node_props_retrieval_query(
+                text_node_properties, embedding_node_property
             )
         store = cls(
             embedding=embedding,
@@ -1288,19 +1298,20 @@ class Neo4jVector(VectorStore):
 
         Args:
             query: search query text.
-            k: Number of Documents to return. Defaults to 4.
-            fetch_k: Number of Documents to fetch to pass to MMR algorithm.
-            lambda_mult: Number between 0 and 1 that determines the degree
-                        of diversity among the results with 0 corresponding
-                        to maximum diversity and 1 to minimum diversity.
-                        Defaults to 0.5.
+            k: Number of `Document` objects to return.
+            fetch_k: Number of `Document` objects to fetch to pass to MMR algorithm.
+            lambda_mult: Number between `0` and `1` that determines the degree of
+                diversity among the results with `0` corresponding to maximum diversity
+                and `1` to minimum diversity.
             filter: Filter on metadata properties, e.g.
-                            {
-                                "str_property": "foo",
-                                "int_property": 123
-                            }
+                ```json
+                {
+                    "str_property": "foo",
+                    "int_property": 123
+                }
+                ```
         Returns:
-            List of Documents selected by maximal marginal relevance.
+            List of `Document` objects selected by maximal marginal relevance.
         """
         try:
             import numpy as np
@@ -1342,18 +1353,19 @@ class Neo4jVector(VectorStore):
 
     def _select_relevance_score_fn(self) -> Callable[[float], float]:
         """
-        The 'correct' relevance function
-        may differ depending on a few things, including:
-        - the distance / similarity metric used by the VectorStore
-        - the scale of your embeddings (OpenAI's are unit normed. Many others are not!)
-        - embedding dimensionality
+        The 'correct' relevance function may differ depending on a few things,
+        including:
+
+        - The distance / similarity metric used by the `VectorStore`
+        - The scale of your embeddings (OpenAI's are unit normed. Many others are not!)
+        - Embedding dimensionality
         - etc.
         """
         if self.override_relevance_score_fn is not None:
             return self.override_relevance_score_fn
 
         # Default strategy is to rely on distance strategy provided
-        # in vectorstore constructor
+        # in VectorStore constructor
         if self._distance_strategy == DistanceStrategy.COSINE:
             return lambda x: x
         elif self._distance_strategy == DistanceStrategy.EUCLIDEAN_DISTANCE:
@@ -1364,3 +1376,28 @@ class Neo4jVector(VectorStore):
                 f" for distance_strategy of {self._distance_strategy}."
                 "Consider providing relevance_score_fn to PGVector constructor."
             )
+
+
+def _text_node_props_retrieval_query(
+    text_node_properties: List[str], embedding_node_property: str
+) -> str:
+    """
+    Create a Cypher retrieval query that concatenates multiple
+    text node properties.
+
+    Args:
+        text_node_properties: List of node properties to use as text content.
+
+    Returns:
+        A Cypher query string that concatenates the specified
+        text node properties.
+    """
+    return (
+        f"RETURN reduce(str='', k IN {text_node_properties} |"
+        " str + '\\n' + k + ': ' + coalesce(node[k], '')) AS text, "
+        "node {.*, `"
+        + embedding_node_property
+        + "`: Null, id: Null, "
+        + ", ".join([f"`{prop}`: Null" for prop in text_node_properties])
+        + "} AS metadata, score"
+    )
