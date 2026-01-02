@@ -260,7 +260,7 @@ def test_chain_type() -> None:
     assert chain._chain_type == "graph_cypher_chain"
 
 
-def test_graph_cypher_qa_chain() -> None:
+def test_graph_cypher_qa_chain_without_examples() -> None:
     template = """You are a nice chatbot having a conversation with a human.
 
     Schema:
@@ -269,11 +269,15 @@ def test_graph_cypher_qa_chain() -> None:
     Previous conversation:
     {chat_history}
 
+    Examples (optional):
+    {examples}
+
     New human question: {question}
     Response:"""
 
     prompt = PromptTemplate(
-        input_variables=["schema", "question", "chat_history"], template=template
+        input_variables=["schema", "question", "examples", "chat_history"],
+        template=template,
     )
 
     memory = ConversationBufferMemory(memory_key="chat_history")
@@ -283,8 +287,8 @@ def test_graph_cypher_qa_chain() -> None:
         "Schema:\n    Node properties:\n\nRelationship "
         "properties:\n\nThe relationships"
         ":\n\n\n    "
-        "Previous conversation:\n    \n\n    New human question: "
-        "Test question\n    Response:"
+        "Previous conversation:\n    \n\n    Examples (optional):\n"
+        "    None\n\n    New human question: Test question\n    Response:"
     )
 
     prompt2 = (
@@ -293,7 +297,8 @@ def test_graph_cypher_qa_chain() -> None:
         "properties:\n\nThe relationships"
         ":\n\n\n    "
         "Previous conversation:\n    Human: Test question\nAI: foo\n\n    "
-        "New human question: Test new question\n    Response:"
+        "Examples (optional):\n    None\n\n    New human question: "
+        "Test new question\n    Response:"
     )
 
     llm = FakeLLM(queries={prompt1: "answer1", prompt2: "answer2"})
@@ -311,6 +316,66 @@ def test_graph_cypher_qa_chain() -> None:
     chain.run("Test new question")
     # If we get here without a key error, that means memory
     # was used properly to create prompts.
+    assert True
+
+
+def test_graph_cypher_qa_chain_with_examples() -> None:
+    template = """You are a nice chatbot having a conversation with a human.
+
+    Schema:
+    {schema}
+
+    Previous conversation:
+    {chat_history}
+
+    Examples (optional):
+    {examples}
+
+    New human question: {question}
+    Response:"""
+
+    prompt = PromptTemplate(
+        input_variables=["schema", "question", "examples", "chat_history"],
+        template=template,
+    )
+
+    memory = ConversationBufferMemory(memory_key="chat_history", input_key="query")
+    readonlymemory = ReadOnlySharedMemory(memory=memory)
+    prompt1 = (
+        "You are a nice chatbot having a conversation with a human.\n\n    "
+        "Schema:\n    Node properties:\n\nRelationship "
+        "properties:\n\nThe relationships"
+        ":\n\n\n    "
+        "Previous conversation:\n    \n\n    Examples (optional):\n"
+        "    Test examples\n\n    New human question: "
+        "Test question\n    Response:"
+    )
+
+    prompt2 = (
+        "You are a nice chatbot having a conversation with a human.\n\n    "
+        "Schema:\n    Node properties:\n\nRelationship "
+        "properties:\n\nThe relationships"
+        ":\n\n\n    "
+        "Previous conversation:\n    Human: Test question\nAI: foo\n\n    "
+        "Examples (optional):\n    Test new examples\n\n    "
+        "New human question: Test new question\n    Response:"
+    )
+
+    llm = FakeLLM(queries={prompt1: "answer1", prompt2: "answer2"})
+    chain = GraphCypherQAChain.from_llm(
+        cypher_llm=llm,
+        qa_llm=FakeLLM(),
+        graph=FakeGraphStore(),
+        verbose=True,
+        return_intermediate_steps=False,
+        cypher_llm_kwargs={"prompt": prompt, "memory": readonlymemory},
+        memory=memory,
+        allow_dangerous_requests=True,
+    )
+    chain.run(query="Test question", examples="Test examples")
+    chain.run(query="Test new question", examples="Test new examples")
+    # If we get here without a key error, that means memory
+    # and examples were used properly to create prompts.
     assert True
 
 

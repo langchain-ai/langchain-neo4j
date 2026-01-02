@@ -121,8 +121,9 @@ class GraphCypherQAChain(Chain):
     cypher_generation_chain: Runnable[Dict[str, Any], str]
     qa_chain: Runnable[Dict[str, Any], str]
     graph_schema: str
-    input_key: str = "query"
-    output_key: str = "result"
+    input_key: str = "query"  #: :meta private:
+    output_key: str = "result"  #: :meta private:
+    example_key: str = "examples"  #: :meta private:
     top_k: int = 10
     """Number of results to return from the query"""
     return_intermediate_steps: bool = False
@@ -323,8 +324,10 @@ class GraphCypherQAChain(Chain):
         _run_manager = run_manager or CallbackManagerForChainRun.get_noop_manager()
         callbacks = _run_manager.get_child()
         question = inputs[self.input_key]
+        examples = inputs.get(self.example_key, None)
         args = {
             "question": question,
+            "examples": examples,
             "schema": self.graph_schema,
         }
         args.update(inputs)
