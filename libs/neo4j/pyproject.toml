@@ -1,82 +1,79 @@
-[project]
-name = "langchain-neo4j"
-version = "0.6.0"
-description = "An integration package connecting Neo4j and LangChain"
-readme = "README.md"
-license = {text = "MIT"}
-authors = []
-requires-python = ">=3.10,<3.14"
-dependencies = [
-    "langchain-classic>=1.0.0,<2.0.0",
-    "langchain-core>=1.0.0,<2.0.0",
-    "neo4j>=5.25.0,<6.0.0",
-    "neo4j-graphrag>=1.9.0,<2.0.0",
-]
-
-[project.urls]
-"Repository" = "https://github.com/langchain-ai/langchain-neo4j"
-"Source Code" = "https://github.com/langchain-ai/langchain-neo4j/tree/main/libs/neo4j"
-"Release Notes" = "https://github.com/langchain-ai/langchain-neo4j/releases"
-
-[project.optional-dependencies]
-mmr = [
-    "numpy>=2.1.0,<3.0.0",
+[build-system]
+build-backend = "hatchling.build"
+requires = [
+    "hatchling",
 ]
 
 [dependency-groups]
 codespell = [
     "codespell>=2.2.6,<3.0.0",
 ]
-test = [
-    "pytest>=7.4.3,<8.0.0",
-    "pytest-asyncio>=0.23.2,<0.24.0",
-    "pytest-cov>=6.0.0,<7.0.0",
-    "pytest-socket>=0.7.0,<0.8.0",
-    "pytest-watcher>=0.4.0,<0.5.0",
-    "syrupy>=4.9.1",
-]
-typing = [
-    "mypy>=1.10,<2.0.0",
-    "types-pyyaml>=6.0.12.20240917,<7.0.0",
+dev = [
+    "pyprojectsort>=0.4.0",
 ]
 lint = [
     "ruff>=0.5,<0.6",
 ]
-dev = []
+test = [
+    "pytest-asyncio>=0.23.2,<0.24.0",
+    "pytest-cov>=6.0.0,<7.0.0",
+    "pytest-socket>=0.7.0,<0.8.0",
+    "pytest-watcher>=0.4.0,<0.5.0",
+    "pytest>=7.4.3,<8.0.0",
+    "syrupy>=4.9.1",
+]
 test_integration = []
+typing = [
+    "mypy>=1.10,<2.0.0",
+    "types-pyyaml>=6.0.12.20240917,<7.0.0",
+]
 
+[project]
+authors = []
+dependencies = [
+    "langchain-classic>=1.0.0,<2.0.0",
+    "langchain-core>=1.0.0,<2.0.0",
+    "neo4j-graphrag>=1.9.0,<2.0.0",
+    "neo4j>=5.25.0,<6.0.0",
+]
+description = "An integration package connecting Neo4j and LangChain"
+name = "langchain-neo4j"
+readme = "README.md"
+requires-python = ">=3.10,<3.14"
+version = "0.6.0"
 
-[tool.ruff.lint]
-select = [
-  "E",    # pycodestyle
-  "F",    # pyflakes
-  "I",    # isort
-  "T201", # print
+[project.license]
+text = "MIT"
+
+[project.optional-dependencies]
+mmr = [
+    "numpy>=2.1.0,<3.0.0",
+]
+
+[project.urls]
+"Release Notes" = "https://github.com/langchain-ai/langchain-neo4j/releases"
+Repository = "https://github.com/langchain-ai/langchain-neo4j"
+"Source Code" = "https://github.com/langchain-ai/langchain-neo4j/tree/main/libs/neo4j"
+
+[tool.coverage.run]
+omit = [
+    "tests/*",
 ]
 
 [tool.mypy]
 disallow_untyped_defs = "True"
 
-[tool.coverage.run]
-omit = ["tests/*"]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
-
 [tool.pytest.ini_options]
-# --strict-markers will raise errors on unknown marks.
-# https://docs.pytest.org/en/7.1.x/how-to/mark.html#raising-errors-on-unknown-marks
-#
-# https://docs.pytest.org/en/7.1.x/reference/reference.html
-# --strict-config       any warnings encountered while parsing the `pytest`
-#                       section of the configuration file raise errors.
-#
-# https://github.com/tophat/syrupy
 addopts = "--strict-markers --strict-config --durations=5 --cov=langchain_neo4j --cov-report=html --cov-report=term"
-# Registering custom markers.
-# https://docs.pytest.org/en/7.1.x/example/markers.html#registering-markers
-markers = [
-  "compile: mark placeholder test used to compile integration tests without running them",
-]
 asyncio_mode = "auto"
+markers = [
+    "compile: mark placeholder test used to compile integration tests without running them",
+]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "F",
+    "I",
+    "T201",
+]
