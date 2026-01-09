@@ -2,6 +2,8 @@
 
 ## Next
 
+## 0.7.0
+
 ### Added
 
 - Added bearer token auth support to `Neo4jGraph` (via `token`).
