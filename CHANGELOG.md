@@ -18,6 +18,7 @@
 
 - `Neo4jVector` now handles missing `metadata` in retrieval results.
 - Fixed `Neo4jVector.from_existing_index` retrieval query generation when using multiple `text_node_properties`.
+- Fixed issue with `Neo4jChatMessageHistory` using `database` rather than `database_` in its `execute_query` calls.
 
 ## 0.6.0
 
