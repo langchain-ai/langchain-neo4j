@@ -179,8 +179,10 @@ def test_init_apoc_procedure_not_found(
 ) -> None:
     """Test an error is raised when APOC is not installed."""
     with patch("langchain_neo4j.Neo4jGraph.refresh_schema") as mock_refresh_schema:
-        err = ClientError()
-        err.code = "Neo.ClientError.Procedure.ProcedureNotFound"
+        err = Neo4jError._basic_hydrate(
+            neo4j_code="Neo.ClientError.Procedure.ProcedureNotFound",
+            message="Procedure not found",
+        )
         mock_refresh_schema.side_effect = err
         with pytest.raises(ValueError) as exc_info:
             Neo4jGraph(url="bolt://localhost:7687", username="", password="")
@@ -193,8 +195,10 @@ def test_init_refresh_schema_other_err(
     """Test any other ClientErrors raised when calling refresh_schema in __init__ are
     re-raised."""
     with patch("langchain_neo4j.Neo4jGraph.refresh_schema") as mock_refresh_schema:
-        err = ClientError()
-        err.code = "other_error"
+        err = Neo4jError._basic_hydrate(
+            neo4j_code="Neo.ClientError.General.OtherError",
+            message="Other error",
+        )
         mock_refresh_schema.side_effect = err
         with pytest.raises(ClientError) as exc_info:
             Neo4jGraph(url="bolt://localhost:7687", username="", password="")
@@ -203,9 +207,10 @@ def test_init_refresh_schema_other_err(
 
 def test_query_fallback_execution(mock_neo4j_driver: MagicMock) -> None:
     """Test the fallback to allow for implicit transactions in query."""
-    err = Neo4jError()
-    err.code = "Neo.DatabaseError.Statement.ExecutionFailed"
-    err.message = "in an implicit transaction"
+    err = Neo4jError._basic_hydrate(
+        neo4j_code="Neo.DatabaseError.Statement.ExecutionFailed",
+        message="in an implicit transaction",
+    )
     mock_neo4j_driver.execute_query.side_effect = err
     graph = Neo4jGraph(
         url="bolt://localhost:7687",

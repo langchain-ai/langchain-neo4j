@@ -73,7 +73,7 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
         self._driver.execute_query(
             CREATE_SESSION_NODE_QUERY.format(node_label=self._node_label),
             {"session_id": self._session_id},
-            database=self._database,
+            database_=self._database,
         )
 
     @property
@@ -84,7 +84,7 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
                 node_label=self._node_label, window=self._window * 2
             ),
             {"session_id": self._session_id},
-            database=self._database,
+            database_=self._database,
         )
         messages = [
             {
@@ -111,7 +111,7 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
                 "content": message.content,
                 "session_id": self._session_id,
             },
-            database=self._database,
+            database_=self._database,
         )
 
     def clear(self, delete_session_node: bool = False) -> None:
@@ -126,13 +126,13 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
                     node_label=self._node_label
                 ),
                 parameters_={"session_id": self._session_id},
-                database=self._database,
+                database_=self._database,
             )
         else:
             self._driver.execute_query(
                 query_=DELETE_MESSAGES_QUERY.format(node_label=self._node_label),
                 parameters_={"session_id": self._session_id},
-                database=self._database,
+                database_=self._database,
             )
 
     def __del__(self) -> None:

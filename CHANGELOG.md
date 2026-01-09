@@ -5,16 +5,20 @@
 ### Added
 
 - Added bearer token auth support to `Neo4jGraph` (via `token`).
+- Added support for Python 3.14.
+- Added support for Neo4j Python Driver v6.0.0+.
 
 ## Changed
 
 - Switched project/dependency management from Poetry to uv.
 - Updated docstrings/reference-doc formatting for the new LangChain reference docs site (MkDocs/Markdown).
+- CI/CD workflows now test with Python 3.14.
 
 ### Fixed
 
 - `Neo4jVector` now handles missing `metadata` in retrieval results.
 - Fixed `Neo4jVector.from_existing_index` retrieval query generation when using multiple `text_node_properties`.
+- Fixed issue with `Neo4jChatMessageHistory` using `database` rather than `database_` in its `execute_query` calls.
 
 ## 0.6.0
 
