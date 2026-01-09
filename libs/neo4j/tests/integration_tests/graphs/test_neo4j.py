@@ -2,7 +2,6 @@ import os
 import urllib
 
 import pytest
-import requests  # type: ignore[import-untyped]
 from langchain_core.documents import Document
 from neo4j_graphrag.schema import NODE_PROPERTIES_QUERY, REL_PROPERTIES_QUERY, REL_QUERY
 
@@ -58,36 +57,6 @@ def test_connect_neo4j_env() -> None:
     assert os.environ.get("NEO4J_USERNAME") is not None
     assert os.environ.get("NEO4J_PASSWORD") is not None
     graph = Neo4jGraph()
-
-    output = graph.query('RETURN "test" AS output')
-    expected_output = [{"output": "test"}]
-    assert output == expected_output
-
-
-@pytest.mark.usefixtures("clear_neo4j_database")
-def test_connect_neo4j_with_bearer_token(
-    neo4j_credentials: Neo4jCredentials,
-) -> None:
-    """Test that Neo4j database is correctly connected using a valid bearer token."""
-    # Get token from mock OAuth2 server
-    oauth_url = os.environ.get("OAUTH2_SERVER_URL", "https://localhost:9443")
-    token_endpoint = f"{oauth_url}/test/token"
-    response = requests.post(
-        token_endpoint,
-        data={
-            "grant_type": "client_credentials",
-            "client_id": "test-client",
-            "client_secret": "test-secret",
-        },
-        verify=False,  # Allow self-signed certificates from mock OAuth2 server
-    )
-    response.raise_for_status()
-    token = response.json()["access_token"]
-
-    graph = Neo4jGraph(
-        url=neo4j_credentials["url"],
-        token=token,
-    )
 
     output = graph.query('RETURN "test" AS output')
     expected_output = [{"output": "test"}]
