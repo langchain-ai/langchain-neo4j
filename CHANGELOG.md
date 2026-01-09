@@ -5,11 +5,14 @@
 ### Added
 
 - Added bearer token auth support to `Neo4jGraph` (via `token`).
+- Added support for Python 3.14.
+- Added support for Neo4j Python Driver v6.0.0+.
 
 ## Changed
 
 - Switched project/dependency management from Poetry to uv.
 - Updated docstrings/reference-doc formatting for the new LangChain reference docs site (MkDocs/Markdown).
+- CI/CD workflows now test with Python 3.14.
 
 ### Fixed
 
