@@ -14,6 +14,7 @@ from langgraph.checkpoint.base import (
     CheckpointMetadata,
     CheckpointTuple,
 )
+from neo4j import AsyncDriver
 
 from langchain_neo4j.checkpoint._ainternal import create_async_driver, get_async_session
 from langchain_neo4j.checkpoint.base import (
@@ -41,7 +42,6 @@ from langchain_neo4j.checkpoint.base import (
     CYPHER_UPSERT_WRITE,
     BaseNeo4jSaver,
 )
-from neo4j import AsyncDriver
 
 __all__ = ["AsyncNeo4jSaver"]
 
@@ -523,7 +523,9 @@ class AsyncNeo4jSaver(BaseNeo4jSaver):
 
         async def _collect() -> list[CheckpointTuple]:
             results = []
-            async for item in self.alist(config, filter=filter, before=before, limit=limit):
+            async for item in self.alist(
+                config, filter=filter, before=before, limit=limit
+            ):
                 results.append(item)
             return results
 

@@ -35,7 +35,10 @@ class TestLangGraphIntegration:
             last_msg = state["messages"][-1] if state["messages"] else {}
             return {
                 "messages": [
-                    {"role": "assistant", "content": f"Echo: {last_msg.get('content', '')}"}
+                    {
+                        "role": "assistant",
+                        "content": f"Echo: {last_msg.get('content', '')}",
+                    }
                 ]
             }
 

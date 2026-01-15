@@ -442,7 +442,9 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
         type_, data = self.serde.dumps_typed(checkpoint)
         if isinstance(data, bytes):
             # Store as JSON with serde wrapper
-            return "serde", json.dumps({"__serde_type__": type_, "__serde_data__": data.hex()})
+            return "serde", json.dumps(
+                {"__serde_type__": type_, "__serde_data__": data.hex()}
+            )
         return "json", json.dumps(checkpoint, default=str)
 
     def _load_checkpoint(self, type_: str, data: str) -> Checkpoint:
@@ -476,7 +478,9 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
         """
         type_, data = self.serde.dumps_typed(metadata)
         if isinstance(data, bytes):
-            return "serde", json.dumps({"__serde_type__": type_, "__serde_data__": data.hex()})
+            return "serde", json.dumps(
+                {"__serde_type__": type_, "__serde_data__": data.hex()}
+            )
         return "json", json.dumps(metadata, default=str)
 
     def _load_metadata(self, type_: str, data: str) -> CheckpointMetadata:
@@ -543,7 +547,9 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
                 type_, data = self.serde.dumps_typed(value)
                 if isinstance(data, bytes):
                     # Store as JSON with serde wrapper for human readability of the format
-                    blob_data = json.dumps({"__serde_type__": type_, "__serde_data__": data.hex()})
+                    blob_data = json.dumps(
+                        {"__serde_type__": type_, "__serde_data__": data.hex()}
+                    )
                     blob_type = "serde"
                 else:
                     blob_data = json.dumps(value)
@@ -578,7 +584,9 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
             parsed = json.loads(data)
 
             # Check if it's a serde-wrapped value
-            if blob_type == "serde" or (isinstance(parsed, dict) and "__serde_type__" in parsed):
+            if blob_type == "serde" or (
+                isinstance(parsed, dict) and "__serde_type__" in parsed
+            ):
                 type_ = parsed["__serde_type__"]
                 data_bytes = bytes.fromhex(parsed["__serde_data__"])
                 channel_values[channel] = self.serde.loads_typed((type_, data_bytes))
@@ -609,7 +617,9 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
                 # For complex objects, use serde
                 type_, data = self.serde.dumps_typed(value)
                 if isinstance(data, bytes):
-                    blob_data = json.dumps({"__serde_type__": type_, "__serde_data__": data.hex()})
+                    blob_data = json.dumps(
+                        {"__serde_type__": type_, "__serde_data__": data.hex()}
+                    )
                     blob_type = "serde"
                 else:
                     blob_data = json.dumps(value)
@@ -627,7 +637,9 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
             )
         return write_records
 
-    def _load_writes(self, write_records: list[dict[str, Any]]) -> list[tuple[str, str, Any]]:
+    def _load_writes(
+        self, write_records: list[dict[str, Any]]
+    ) -> list[tuple[str, str, Any]]:
         """Deserialize write records from JSON to pending writes.
 
         Args:
@@ -647,7 +659,9 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
             parsed = json.loads(data)
 
             # Check if it's a serde-wrapped value
-            if blob_type == "serde" or (isinstance(parsed, dict) and "__serde_type__" in parsed):
+            if blob_type == "serde" or (
+                isinstance(parsed, dict) and "__serde_type__" in parsed
+            ):
                 type_ = parsed["__serde_type__"]
                 data_bytes = bytes.fromhex(parsed["__serde_data__"])
                 value = self.serde.loads_typed((type_, data_bytes))
@@ -681,7 +695,9 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
         checkpoint = self._load_checkpoint(
             checkpoint_record["type"], checkpoint_record["checkpoint"]
         )
-        metadata = self._load_metadata(checkpoint_record["type"], checkpoint_record["metadata"])
+        metadata = self._load_metadata(
+            checkpoint_record["type"], checkpoint_record["metadata"]
+        )
 
         # Build config
         config: RunnableConfig = {

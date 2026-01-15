@@ -63,7 +63,9 @@ class TestAsyncNeo4jSaver:
             }
             metadata = {"source": "loop", "step": i, "writes": {}, "parents": {}}
 
-            result = await clean_async_neo4j_saver.aput(config, checkpoint, metadata, {})
+            result = await clean_async_neo4j_saver.aput(
+                config, checkpoint, metadata, {}
+            )
             config = {
                 "configurable": {
                     "thread_id": thread_id,
@@ -100,7 +102,9 @@ class TestAsyncNeo4jSaver:
             ("messages", {"role": "user", "content": "Hello again"}),
             ("counter", 42),
         ]
-        await clean_async_neo4j_saver.aput_writes(result_config, writes, task_id="task-1")
+        await clean_async_neo4j_saver.aput_writes(
+            result_config, writes, task_id="task-1"
+        )
 
         # Verify writes are retrieved with checkpoint
         tuple_ = await clean_async_neo4j_saver.aget_tuple(result_config)
@@ -160,7 +164,9 @@ class TestAsyncNeo4jSaver:
         config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
 
         # Store checkpoint
-        await clean_async_neo4j_saver.aput(config, sample_checkpoint, sample_metadata, {})
+        await clean_async_neo4j_saver.aput(
+            config, sample_checkpoint, sample_metadata, {}
+        )
 
         # Verify exists
         tuple_ = await clean_async_neo4j_saver.aget_tuple(config)
@@ -245,7 +251,9 @@ class TestAsyncNeo4jSaver:
         config: dict[str, Any] = {"configurable": {}}
 
         with pytest.raises(ValueError, match="thread_id is required"):
-            await clean_async_neo4j_saver.aput(config, sample_checkpoint, sample_metadata, {})
+            await clean_async_neo4j_saver.aput(
+                config, sample_checkpoint, sample_metadata, {}
+            )
 
     @pytest.mark.asyncio
     async def test_aput_writes_without_checkpoint_id_raises(
@@ -256,4 +264,6 @@ class TestAsyncNeo4jSaver:
         config = {"configurable": {"thread_id": "test", "checkpoint_ns": ""}}
 
         with pytest.raises(ValueError, match="checkpoint_id is required"):
-            await clean_async_neo4j_saver.aput_writes(config, [("channel", "value")], "task-1")
+            await clean_async_neo4j_saver.aput_writes(
+                config, [("channel", "value")], "task-1"
+            )

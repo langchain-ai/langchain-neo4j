@@ -24,7 +24,9 @@ class TestNeo4jSaver:
         config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
 
         # Store checkpoint
-        result_config = clean_neo4j_saver.put(config, sample_checkpoint, sample_metadata, {})
+        result_config = clean_neo4j_saver.put(
+            config, sample_checkpoint, sample_metadata, {}
+        )
 
         # Verify returned config has checkpoint_id
         assert result_config["configurable"]["checkpoint_id"] == sample_checkpoint["id"]
@@ -89,7 +91,9 @@ class TestNeo4jSaver:
         config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
 
         # First create a checkpoint
-        result_config = clean_neo4j_saver.put(config, sample_checkpoint, sample_metadata, {})
+        result_config = clean_neo4j_saver.put(
+            config, sample_checkpoint, sample_metadata, {}
+        )
 
         # Store writes
         writes = [
@@ -390,7 +394,9 @@ class TestNeo4jSaver:
             blob_value = record["blob"]
 
             # Verify blob is a string (JSON), not "[object Object]"
-            assert isinstance(blob_value, str), f"Blob should be a string, got {type(blob_value)}"
+            assert isinstance(
+                blob_value, str
+            ), f"Blob should be a string, got {type(blob_value)}"
             assert blob_value != "[object Object]", "Blob should not be [object Object]"
             assert blob_value != "undefined", "Blob should not be undefined"
 
@@ -400,9 +406,9 @@ class TestNeo4jSaver:
             try:
                 parsed = json.loads(blob_value)
                 # Verify the data is readable
-                assert parsed == {"key": "value"}, (
-                    f"Parsed JSON should match original data, got {parsed}"
-                )
+                assert parsed == {
+                    "key": "value"
+                }, f"Parsed JSON should match original data, got {parsed}"
             except json.JSONDecodeError as e:
                 pytest.fail(f"Blob is not valid JSON: {e}")
 
@@ -435,17 +441,21 @@ class TestNeo4jSaver:
 
             # Verify checkpoint is a string (JSON-wrapped)
             checkpoint_value = record["checkpoint"]
-            assert isinstance(checkpoint_value, str), (
-                f"Checkpoint should be a string, got {type(checkpoint_value)}"
-            )
-            assert checkpoint_value != "[object Object]", "Checkpoint should not be [object Object]"
+            assert isinstance(
+                checkpoint_value, str
+            ), f"Checkpoint should be a string, got {type(checkpoint_value)}"
+            assert (
+                checkpoint_value != "[object Object]"
+            ), "Checkpoint should not be [object Object]"
 
             # Verify metadata is a string (JSON-wrapped)
             metadata_value = record["metadata"]
-            assert isinstance(metadata_value, str), (
-                f"Metadata should be a string, got {type(metadata_value)}"
-            )
-            assert metadata_value != "[object Object]", "Metadata should not be [object Object]"
+            assert isinstance(
+                metadata_value, str
+            ), f"Metadata should be a string, got {type(metadata_value)}"
+            assert (
+                metadata_value != "[object Object]"
+            ), "Metadata should not be [object Object]"
 
             # Verify both are valid JSON (may be serde-wrapped or plain JSON)
             import json
@@ -454,15 +464,23 @@ class TestNeo4jSaver:
                 parsed_cp = json.loads(checkpoint_value)
                 # Could be serde-wrapped or plain JSON
                 if "__serde_type__" in parsed_cp:
-                    assert "__serde_data__" in parsed_cp, "Serde wrapper should have data"
+                    assert (
+                        "__serde_data__" in parsed_cp
+                    ), "Serde wrapper should have data"
                 else:
-                    assert "id" in parsed_cp, "Plain JSON checkpoint should have 'id' field"
+                    assert (
+                        "id" in parsed_cp
+                    ), "Plain JSON checkpoint should have 'id' field"
 
                 parsed_meta = json.loads(metadata_value)
                 if "__serde_type__" in parsed_meta:
-                    assert "__serde_data__" in parsed_meta, "Serde wrapper should have data"
+                    assert (
+                        "__serde_data__" in parsed_meta
+                    ), "Serde wrapper should have data"
                 else:
-                    assert "source" in parsed_meta, "Plain JSON metadata should have 'source' field"
+                    assert (
+                        "source" in parsed_meta
+                    ), "Plain JSON metadata should have 'source' field"
             except json.JSONDecodeError as e:
                 pytest.fail(f"Data is not valid JSON: {e}")
 
@@ -516,9 +534,9 @@ class TestNeo4jSaver:
                 {"thread_id": thread_id},
             )
             cp_record = result.single()
-            assert cp_record is not None, (
-                "Checkpoint should be connected to Thread via HAS_CHECKPOINT"
-            )
+            assert (
+                cp_record is not None
+            ), "Checkpoint should be connected to Thread via HAS_CHECKPOINT"
             assert cp_record["checkpoint_id"] == "test-cp-graph"
 
             # Check ChannelState node exists and is connected to Checkpoint
@@ -532,9 +550,9 @@ class TestNeo4jSaver:
                 {"thread_id": thread_id},
             )
             cs_record = result.single()
-            assert cs_record is not None, (
-                "ChannelState should be connected to Checkpoint via HAS_CHANNEL"
-            )
+            assert (
+                cs_record is not None
+            ), "ChannelState should be connected to Checkpoint via HAS_CHANNEL"
             assert cs_record["channel"] == "messages"
 
     def test_checkpoint_chain_traversal(
@@ -596,7 +614,9 @@ class TestNeo4jSaver:
             "pending_sends": [],
         }
         grandchild_metadata = {"source": "loop", "step": 2, "writes": {}, "parents": {}}
-        clean_neo4j_saver.put(grandchild_config, grandchild_checkpoint, grandchild_metadata, {})
+        clean_neo4j_saver.put(
+            grandchild_config, grandchild_checkpoint, grandchild_metadata, {}
+        )
 
         # Verify PREVIOUS relationship chain exists
         with clean_neo4j_saver._driver.session() as session:
@@ -611,7 +631,9 @@ class TestNeo4jSaver:
             )
             record = result.single()
             assert record is not None, "Full checkpoint chain should exist"
-            assert record["chain_length"] == 2, "Chain should have 2 PREVIOUS relationships"
+            assert (
+                record["chain_length"] == 2
+            ), "Chain should have 2 PREVIOUS relationships"
 
             # Verify parent has no PREVIOUS relationship (it's the root)
             result = session.run(
@@ -621,7 +643,9 @@ class TestNeo4jSaver:
                 """,
             )
             record = result.single()
-            assert record is None, "Parent checkpoint should have no PREVIOUS relationship"
+            assert (
+                record is None
+            ), "Parent checkpoint should have no PREVIOUS relationship"
 
     def test_pending_writes_graph_structure(
         self,
@@ -634,7 +658,9 @@ class TestNeo4jSaver:
         config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
 
         # Create checkpoint
-        result_config = clean_neo4j_saver.put(config, sample_checkpoint, sample_metadata, {})
+        result_config = clean_neo4j_saver.put(
+            config, sample_checkpoint, sample_metadata, {}
+        )
 
         # Store pending writes
         writes = [
@@ -691,7 +717,9 @@ class TestNeo4jSaver:
         result_config = clean_neo4j_saver.put(config, checkpoint, metadata, {})
 
         # Add pending writes
-        clean_neo4j_saver.put_writes(result_config, [("test", "value")], task_id="task-delete")
+        clean_neo4j_saver.put_writes(
+            result_config, [("test", "value")], task_id="task-delete"
+        )
 
         # Verify structure exists
         with clean_neo4j_saver._driver.session() as session:
@@ -826,7 +854,9 @@ class TestNeo4jSaver:
             )
             record = result.single()
             assert record is not None
-            assert record["head_id"] == "cp-2", "HEAD should be updated to latest checkpoint"
+            assert (
+                record["head_id"] == "cp-2"
+            ), "HEAD should be updated to latest checkpoint"
 
     def test_checkpoint_linked_to_branch(
         self,
@@ -853,7 +883,9 @@ class TestNeo4jSaver:
             )
             record = result.single()
 
-            assert record is not None, "Checkpoint should be linked to branch via ON_BRANCH"
+            assert (
+                record is not None
+            ), "Checkpoint should be linked to branch via ON_BRANCH"
             assert record["branch_name"] == "main"
 
     def test_get_tuple_uses_active_branch_head(
@@ -1016,4 +1048,6 @@ class TestNeo4jSaver:
                 {"thread_id": thread_id},
             )
             record = result.single()
-            assert record["name"] == "fork-1", "Active branch should be switched to fork-1"
+            assert (
+                record["name"] == "fork-1"
+            ), "Active branch should be switched to fork-1"

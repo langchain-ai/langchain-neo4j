@@ -15,6 +15,7 @@ from langgraph.checkpoint.base import (
     CheckpointMetadata,
     CheckpointTuple,
 )
+from neo4j import Driver
 
 from langchain_neo4j.checkpoint._internal import create_driver, get_session
 from langchain_neo4j.checkpoint.base import (
@@ -42,7 +43,6 @@ from langchain_neo4j.checkpoint.base import (
     CYPHER_UPSERT_WRITE,
     BaseNeo4jSaver,
 )
-from neo4j import Driver
 
 __all__ = ["Neo4jSaver"]
 

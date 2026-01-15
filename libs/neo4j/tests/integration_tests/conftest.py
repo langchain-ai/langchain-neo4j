@@ -16,6 +16,7 @@ os.environ["NEO4J_URI"] = url
 os.environ["NEO4J_USERNAME"] = username
 os.environ["NEO4J_PASSWORD"] = password
 
+
 @pytest.fixture
 def clear_neo4j_database() -> None:
     driver = neo4j.GraphDatabase.driver(url, auth=(username, password))
@@ -30,6 +31,7 @@ def neo4j_credentials() -> Neo4jCredentials:
         "username": username,
         "password": password,
     }
+
 
 @pytest.fixture
 def neo4j_driver() -> Generator:
