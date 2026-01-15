@@ -431,7 +431,8 @@ class TestNeo4jSaver:
                 """
                 MATCH (t:Thread {thread_id: $thread_id})
                       -[:HAS_CHECKPOINT]->(c:Checkpoint)
-                RETURN c.checkpoint as checkpoint, c.metadata as metadata, c.type as type
+                RETURN c.checkpoint as checkpoint, c.metadata as metadata, 
+                       c.type as type
                 """,
                 {"thread_id": thread_id},
             )
@@ -496,7 +497,8 @@ class TestNeo4jSaver:
         sample_checkpoint: dict,
         sample_metadata: dict,
     ) -> None:
-        """Test that proper graph structure is created with Thread, Checkpoint nodes and relationships."""
+        """Test that proper graph structure is created with Thread,
+        Checkpoint nodes and relationships."""
         thread_id = f"test-thread-{uuid.uuid4()}"
         config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
 
@@ -528,7 +530,8 @@ class TestNeo4jSaver:
             # Check Checkpoint node exists and is connected to Thread
             result = session.run(
                 """
-                MATCH (t:Thread {thread_id: $thread_id})-[:HAS_CHECKPOINT]->(c:Checkpoint)
+                MATCH (t:Thread {thread_id: $thread_id})
+                -[:HAS_CHECKPOINT]->(c:Checkpoint)
                 RETURN c.checkpoint_id as checkpoint_id
                 """,
                 {"thread_id": thread_id},
@@ -624,8 +627,10 @@ class TestNeo4jSaver:
             result = session.run(
                 """
                 MATCH path = (gc:Checkpoint {checkpoint_id: 'grandchild-cp-chain'})
-                             -[:PREVIOUS]->(c:Checkpoint {checkpoint_id: 'child-cp-chain'})
-                             -[:PREVIOUS]->(p:Checkpoint {checkpoint_id: 'parent-cp-chain'})
+                             -[:PREVIOUS]->
+                             (c:Checkpoint {checkpoint_id: 'child-cp-chain'})
+                             -[:PREVIOUS]->
+                             (p:Checkpoint {checkpoint_id: 'parent-cp-chain'})
                 RETURN length(path) as chain_length
                 """,
             )
@@ -638,7 +643,8 @@ class TestNeo4jSaver:
             # Verify parent has no PREVIOUS relationship (it's the root)
             result = session.run(
                 """
-                MATCH (p:Checkpoint {checkpoint_id: 'parent-cp-chain'})-[:PREVIOUS]->(older:Checkpoint)
+                MATCH (p:Checkpoint {checkpoint_id: 'parent-cp-chain'})
+                -[:PREVIOUS]->(older:Checkpoint)
                 RETURN older
                 """,
             )
@@ -653,7 +659,8 @@ class TestNeo4jSaver:
         sample_checkpoint: dict,
         sample_metadata: dict,
     ) -> None:
-        """Test that pending writes are stored as PendingWrite nodes with HAS_WRITE relationship."""
+        """Test that pending writes are stored as
+        PendingWrite nodes with HAS_WRITE relationship."""
         thread_id = f"test-thread-{uuid.uuid4()}"
         config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
 
@@ -699,7 +706,8 @@ class TestNeo4jSaver:
         self,
         clean_neo4j_saver: Neo4jSaver,
     ) -> None:
-        """Test that delete_thread removes Thread, Checkpoint, and PendingWrite nodes."""
+        """Test that delete_thread removes Thread,
+        Checkpoint, and PendingWrite nodes."""
         thread_id = f"test-thread-{uuid.uuid4()}"
         config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
 
@@ -805,7 +813,7 @@ class TestNeo4jSaver:
             "pending_sends": [],
         }
         metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
-        result_config = clean_neo4j_saver.put(config, checkpoint_1, metadata, {})
+        clean_neo4j_saver.put(config, checkpoint_1, metadata, {})
 
         # Verify HEAD points to cp-1
         with clean_neo4j_saver._driver.session() as session:
@@ -864,7 +872,8 @@ class TestNeo4jSaver:
         sample_checkpoint: dict,
         sample_metadata: dict,
     ) -> None:
-        """Test that checkpoints are linked to their branch via ON_BRANCH relationship."""
+        """Test that checkpoints are linked to their
+        branch via ON_BRANCH relationship."""
         thread_id = f"test-thread-{uuid.uuid4()}"
         config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
 

@@ -327,7 +327,7 @@ class Neo4jSaver(BaseNeo4jSaver):
         the HEAD of the active branch (instead of lexicographic latest).
 
         Args:
-            config: The runnable configuration with thread_id and optional checkpoint_id.
+            config: The runnable configuration with thread_id and optional checkpoint_id
 
         Returns:
             CheckpointTuple if found, None otherwise.

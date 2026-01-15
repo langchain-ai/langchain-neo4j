@@ -546,7 +546,7 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
                 # This preserves type information for proper deserialization
                 type_, data = self.serde.dumps_typed(value)
                 if isinstance(data, bytes):
-                    # Store as JSON with serde wrapper for human readability of the format
+                    # Store as JSON with serde wrapper for human readability
                     blob_data = json.dumps(
                         {"__serde_type__": type_, "__serde_data__": data.hex()}
                     )
