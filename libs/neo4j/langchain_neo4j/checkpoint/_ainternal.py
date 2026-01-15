@@ -69,7 +69,7 @@ async def create_async_driver(
         ...     password="password"
         ... )
     """
-    return AsyncGraphDatabase.driver(uri, auth=(user, password), **kwargs)
+    return AsyncGraphDatabase.driver(uri, auth=(user, password), **kwargs)  # type: ignore[arg-type]
 
 
 @asynccontextmanager
@@ -89,5 +89,5 @@ async def get_async_session(
     if database:
         session_kwargs["database"] = database
 
-    async with driver.session(**session_kwargs) as session:
+    async with driver.session(**session_kwargs) as session:  # type: ignore[arg-type]
         yield session

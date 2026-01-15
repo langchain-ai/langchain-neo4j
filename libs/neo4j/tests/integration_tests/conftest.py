@@ -1,14 +1,14 @@
 import os
-from collections.abc import Generator
+from collections.abc import AsyncGenerator, Generator
+from typing import Any
 
-import neo4j
 import pytest
 import pytest_asyncio
-from neo4j import AsyncGraphDatabase, GraphDatabase
+from neo4j import AsyncDriver, AsyncGraphDatabase, Driver, GraphDatabase
 
+from langchain_neo4j import AsyncNeo4jSaver, Neo4jSaver
 from tests.integration_tests.utils import Neo4jCredentials
 
-# Existing credential setup (unchanged)
 url = os.environ.get("NEO4J_URI", "bolt://localhost:7687")
 username = os.environ.get("NEO4J_USERNAME", "neo4j")
 password = os.environ.get("NEO4J_PASSWORD", "password")
@@ -19,7 +19,7 @@ os.environ["NEO4J_PASSWORD"] = password
 
 @pytest.fixture
 def clear_neo4j_database() -> None:
-    driver = neo4j.GraphDatabase.driver(url, auth=(username, password))
+    driver = GraphDatabase.driver(url, auth=(username, password))
     driver.execute_query("MATCH (n) DETACH DELETE n;")
     driver.close()
 
@@ -34,7 +34,7 @@ def neo4j_credentials() -> Neo4jCredentials:
 
 
 @pytest.fixture
-def neo4j_driver() -> Generator:
+def neo4j_driver() -> Generator[Driver, None, None]:
     """Create a Neo4j driver for testing."""
     driver = GraphDatabase.driver(url, auth=(username, password))
     yield driver
@@ -42,17 +42,15 @@ def neo4j_driver() -> Generator:
 
 
 @pytest.fixture
-def neo4j_saver(neo4j_driver) -> Generator:
+def neo4j_saver(neo4j_driver: Driver) -> Generator[Neo4jSaver, None, None]:
     """Create a Neo4jSaver for testing."""
-    from langchain_neo4j import Neo4jSaver
-
     saver = Neo4jSaver(neo4j_driver)
     saver.setup()
     yield saver
 
 
 @pytest.fixture
-def clean_neo4j_saver(neo4j_saver) -> Generator:
+def clean_neo4j_saver(neo4j_saver: Neo4jSaver) -> Generator[Neo4jSaver, None, None]:
     """Create a Neo4jSaver and clean up test data after each test."""
     yield neo4j_saver
     with neo4j_saver._driver.session() as session:
@@ -60,7 +58,7 @@ def clean_neo4j_saver(neo4j_saver) -> Generator:
 
 
 @pytest_asyncio.fixture
-async def async_neo4j_driver():
+async def async_neo4j_driver() -> AsyncGenerator[AsyncDriver, None]:
     """Create an async Neo4j driver for testing."""
     driver = AsyncGraphDatabase.driver(url, auth=(username, password))
     yield driver
@@ -68,17 +66,17 @@ async def async_neo4j_driver():
 
 
 @pytest_asyncio.fixture
-async def async_neo4j_saver(async_neo4j_driver):
+async def async_neo4j_saver(async_neo4j_driver: AsyncDriver) -> AsyncNeo4jSaver:
     """Create an AsyncNeo4jSaver for testing."""
-    from langchain_neo4j import AsyncNeo4jSaver
-
     saver = AsyncNeo4jSaver(async_neo4j_driver)
     await saver.setup()
     return saver
 
 
 @pytest_asyncio.fixture
-async def clean_async_neo4j_saver(async_neo4j_saver):
+async def clean_async_neo4j_saver(
+    async_neo4j_saver: AsyncNeo4jSaver,
+) -> AsyncGenerator[AsyncNeo4jSaver, None]:
     """Create an AsyncNeo4jSaver and clean up test data after each test."""
     yield async_neo4j_saver
     async with async_neo4j_saver._driver.session() as session:
@@ -86,7 +84,7 @@ async def clean_async_neo4j_saver(async_neo4j_saver):
 
 
 @pytest.fixture
-def sample_checkpoint() -> dict:
+def sample_checkpoint() -> dict[str, Any]:
     """Create a sample checkpoint for testing."""
     return {
         "v": 1,
@@ -107,7 +105,7 @@ def sample_checkpoint() -> dict:
 
 
 @pytest.fixture
-def sample_metadata() -> dict:
+def sample_metadata() -> dict[str, Any]:
     """Create sample checkpoint metadata for testing."""
     return {
         "source": "input",
@@ -118,7 +116,7 @@ def sample_metadata() -> dict:
 
 
 @pytest.fixture
-def sample_config() -> dict:
+def sample_config() -> dict[str, Any]:
     """Create a sample config for testing."""
     return {
         "configurable": {

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import uuid
-from collections.abc import AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Iterator, Sequence
 from typing import Any
 
 from langchain_core.runnables import RunnableConfig
@@ -518,7 +518,7 @@ class AsyncNeo4jSaver(BaseNeo4jSaver):
         filter: dict[str, Any] | None = None,
         before: RunnableConfig | None = None,
         limit: int | None = None,
-    ) -> list[CheckpointTuple]:
+    ) -> Iterator[CheckpointTuple]:
         """Synchronous wrapper for alist."""
 
         async def _collect() -> list[CheckpointTuple]:
@@ -529,7 +529,7 @@ class AsyncNeo4jSaver(BaseNeo4jSaver):
                 results.append(item)
             return results
 
-        return asyncio.get_event_loop().run_until_complete(_collect())
+        yield from asyncio.get_event_loop().run_until_complete(_collect())
 
     def delete_thread(self, thread_id: str) -> None:
         """Synchronous wrapper for adelete_thread."""

@@ -69,7 +69,7 @@ def create_driver(
         ...     password="password"
         ... )
     """
-    return GraphDatabase.driver(uri, auth=(user, password), **kwargs)
+    return GraphDatabase.driver(uri, auth=(user, password), **kwargs)  # type: ignore[arg-type]
 
 
 @contextmanager
@@ -87,5 +87,5 @@ def get_session(driver: Driver, database: str | None = None) -> Iterator[Session
     if database:
         session_kwargs["database"] = database
 
-    with driver.session(**session_kwargs) as session:
+    with driver.session(**session_kwargs) as session:  # type: ignore[arg-type]
         yield session
