@@ -5,9 +5,10 @@ from __future__ import annotations
 import uuid
 from collections.abc import Sequence
 from operator import add
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 import pytest
+from langchain_core.runnables import RunnableConfig
 
 from langchain_neo4j import Neo4jSaver
 
@@ -50,11 +51,11 @@ class TestLangGraphIntegration:
         graph = builder.compile(checkpointer=clean_neo4j_saver)
 
         thread_id = f"integration-test-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id}}
+        config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
 
         # Run the graph
         result = graph.invoke(
-            {"messages": [{"role": "user", "content": "Hello"}]},
+            cast(Any, {"messages": [{"role": "user", "content": "Hello"}]}),
             config,
         )
 
@@ -96,18 +97,21 @@ class TestLangGraphIntegration:
         graph = builder.compile(checkpointer=clean_neo4j_saver)
 
         thread_id = f"continuity-test-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id}}
+        config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
 
         # First invocation
         result1 = graph.invoke(
-            {"messages": [{"role": "user", "content": "increment"}], "count": 0},
+            cast(
+                Any,
+                {"messages": [{"role": "user", "content": "increment"}], "count": 0},
+            ),
             config,
         )
         assert "Count: 1" in result1["messages"][-1]["content"]
 
         # Second invocation - should continue from checkpoint
         result2 = graph.invoke(
-            {"messages": [{"role": "user", "content": "increment again"}]},
+            cast(Any, {"messages": [{"role": "user", "content": "increment again"}]}),
             config,
         )
         # Count should be 2 because state was persisted
@@ -139,11 +143,11 @@ class TestLangGraphIntegration:
         graph = builder.compile(checkpointer=clean_neo4j_saver)
 
         thread_id = f"list-test-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id}}
+        config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
 
         # Run multiple times
         for i in range(3):
-            graph.invoke({"value": i}, config)
+            graph.invoke(cast(Any, {"value": i}), config)
 
         # List all checkpoints
         checkpoints = list(clean_neo4j_saver.list(config))
@@ -177,10 +181,13 @@ class TestLangGraphIntegration:
         graph = builder.compile(checkpointer=clean_neo4j_saver)
 
         thread_id = f"delete-test-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id}}
+        config: RunnableConfig = {"configurable": {"thread_id": thread_id}}
 
         # Run graph to create checkpoints
-        graph.invoke({"messages": [{"role": "user", "content": "test"}]}, config)
+        graph.invoke(
+            cast(Any, {"messages": [{"role": "user", "content": "test"}]}),
+            config,
+        )
 
         # Verify checkpoint exists
         assert clean_neo4j_saver.get_tuple(config) is not None

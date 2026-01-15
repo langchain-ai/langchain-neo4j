@@ -405,7 +405,9 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
         checkpoint_id = configurable.get("checkpoint_id")
         return thread_id, checkpoint_ns, checkpoint_id
 
-    def get_next_version(self, current: str | None, channel: ChannelVersions) -> str:
+    def get_next_version(
+        self, current: str | None, channel: ChannelVersions | None
+    ) -> str:
         """Generate next version ID using monotonic versioning.
 
         Follows the same pattern as the Postgres checkpointer.

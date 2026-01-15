@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import pytest
+from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.base import Checkpoint, CheckpointMetadata
 
 from langchain_neo4j import Neo4jSaver
 
@@ -16,16 +18,21 @@ class TestNeo4jSaver:
     def test_put_and_get_tuple(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test storing and retrieving a checkpoint."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store checkpoint
         result_config = clean_neo4j_saver.put(
-            config, sample_checkpoint, sample_metadata, {}
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
         )
 
         # Verify returned config has checkpoint_id
@@ -43,24 +50,37 @@ class TestNeo4jSaver:
     def test_get_latest_checkpoint(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_metadata: dict,
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test retrieving latest checkpoint when no checkpoint_id specified."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store multiple checkpoints
         for i in range(3):
-            checkpoint = {
-                "v": 1,
-                "id": f"checkpoint-{i}",
-                "ts": f"2024-01-0{i + 1}T00:00:00Z",
-                "channel_values": {"counter": i},
-                "channel_versions": {"counter": f"{i:032}.{0:016}"},
-                "versions_seen": {},
-                "pending_sends": [],
-            }
-            metadata = {"source": "loop", "step": i, "writes": {}, "parents": {}}
+            checkpoint: Checkpoint = cast(
+                Checkpoint,
+                {
+                    "v": 1,
+                    "id": f"checkpoint-{i}",
+                    "ts": f"2024-01-0{i + 1}T00:00:00Z",
+                    "channel_values": {"counter": i},
+                    "channel_versions": {"counter": f"{i:032}.{0:016}"},
+                    "versions_seen": {},
+                    "pending_sends": [],
+                },
+            )
+            metadata: CheckpointMetadata = cast(
+                CheckpointMetadata,
+                {
+                    "source": "loop",
+                    "step": i,
+                    "writes": {},
+                    "parents": {},
+                },
+            )
 
             result = clean_neo4j_saver.put(config, checkpoint, metadata, {})
             # Update config with new checkpoint_id for next iteration (parent)
@@ -73,7 +93,9 @@ class TestNeo4jSaver:
             }
 
         # Get without checkpoint_id should return latest
-        latest_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        latest_config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
         tuple_ = clean_neo4j_saver.get_tuple(latest_config)
 
         assert tuple_ is not None
@@ -83,20 +105,25 @@ class TestNeo4jSaver:
     def test_put_writes(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test storing pending writes."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # First create a checkpoint
         result_config = clean_neo4j_saver.put(
-            config, sample_checkpoint, sample_metadata, {}
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
         )
 
         # Store writes
-        writes = [
+        writes: list[tuple[str, Any]] = [
             ("messages", {"role": "user", "content": "Hello again"}),
             ("counter", 42),
         ]
@@ -106,10 +133,12 @@ class TestNeo4jSaver:
         tuple_ = clean_neo4j_saver.get_tuple(result_config)
 
         assert tuple_ is not None
-        assert len(tuple_.pending_writes) == 2
+        pending_writes = tuple_.pending_writes
+        assert pending_writes is not None
+        assert len(pending_writes) == 2
 
         # Check writes content
-        write_channels = [w[1] for w in tuple_.pending_writes]
+        write_channels = [w[1] for w in pending_writes]
         assert "messages" in write_channels
         assert "counter" in write_channels
 
@@ -122,22 +151,37 @@ class TestNeo4jSaver:
 
         # Store multiple checkpoints
         for i in range(5):
-            config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
-            checkpoint = {
-                "v": 1,
-                "id": f"cp-{i:03d}",  # Zero-padded for proper ordering
-                "ts": f"2024-01-0{i + 1}T00:00:00Z",
-                "channel_values": {},
-                "channel_versions": {},
-                "versions_seen": {},
-                "pending_sends": [],
+            config: RunnableConfig = {
+                "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
             }
-            metadata = {"source": "loop", "step": i, "writes": {}, "parents": {}}
+            checkpoint: Checkpoint = cast(
+                Checkpoint,
+                {
+                    "v": 1,
+                    "id": f"cp-{i:03d}",  # Zero-padded for proper ordering
+                    "ts": f"2024-01-0{i + 1}T00:00:00Z",
+                    "channel_values": {},
+                    "channel_versions": {},
+                    "versions_seen": {},
+                    "pending_sends": [],
+                },
+            )
+            metadata: CheckpointMetadata = cast(
+                CheckpointMetadata,
+                {
+                    "source": "loop",
+                    "step": i,
+                    "writes": {},
+                    "parents": {},
+                },
+            )
             clean_neo4j_saver.put(config, checkpoint, metadata, {})
 
         # List all
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
-        all_checkpoints = list(clean_neo4j_saver.list(config))
+        list_config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
+        all_checkpoints = list(clean_neo4j_saver.list(list_config))
         assert len(all_checkpoints) == 5
 
         # Verify ordering (newest first)
@@ -145,22 +189,29 @@ class TestNeo4jSaver:
         assert checkpoint_ids == ["cp-004", "cp-003", "cp-002", "cp-001", "cp-000"]
 
         # List with limit
-        limited = list(clean_neo4j_saver.list(config, limit=3))
+        limited = list(clean_neo4j_saver.list(list_config, limit=3))
         assert len(limited) == 3
         assert limited[0].checkpoint["id"] == "cp-004"
 
     def test_delete_thread(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test deleting all checkpoints for a thread."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store checkpoint
-        clean_neo4j_saver.put(config, sample_checkpoint, sample_metadata, {})
+        clean_neo4j_saver.put(
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
+        )
 
         # Verify exists
         tuple_ = clean_neo4j_saver.get_tuple(config)
@@ -181,49 +232,72 @@ class TestNeo4jSaver:
         thread_id = f"test-thread-{uuid.uuid4()}"
 
         # Create parent checkpoint
-        parent_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
-        parent_checkpoint = {
-            "v": 1,
-            "id": "parent-cp",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
+        parent_config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
         }
-        parent_metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        parent_checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "parent-cp",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        parent_metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
         clean_neo4j_saver.put(parent_config, parent_checkpoint, parent_metadata, {})
 
         # Create child checkpoint with parent reference
-        child_config = {
+        child_config: RunnableConfig = {
             "configurable": {
                 "thread_id": thread_id,
                 "checkpoint_ns": "",
                 "checkpoint_id": "parent-cp",  # This becomes parent
             }
         }
-        child_checkpoint = {
-            "v": 1,
-            "id": "child-cp",
-            "ts": "2024-01-01T00:01:00Z",
-            "channel_values": {},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        child_metadata = {"source": "loop", "step": 1, "writes": {}, "parents": {}}
+        child_checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "child-cp",
+                "ts": "2024-01-01T00:01:00Z",
+                "channel_values": {},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        child_metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "loop",
+                "step": 1,
+                "writes": {},
+                "parents": {},
+            },
+        )
         clean_neo4j_saver.put(child_config, child_checkpoint, child_metadata, {})
 
         # Verify parent relationship
-        child_tuple = clean_neo4j_saver.get_tuple(
-            {
-                "configurable": {
-                    "thread_id": thread_id,
-                    "checkpoint_ns": "",
-                    "checkpoint_id": "child-cp",
-                }
+        get_config: RunnableConfig = {
+            "configurable": {
+                "thread_id": thread_id,
+                "checkpoint_ns": "",
+                "checkpoint_id": "child-cp",
             }
-        )
+        }
+        child_tuple = clean_neo4j_saver.get_tuple(get_config)
 
         assert child_tuple is not None
         assert child_tuple.parent_config is not None
@@ -234,7 +308,7 @@ class TestNeo4jSaver:
         clean_neo4j_saver: Neo4jSaver,
     ) -> None:
         """Test retrieving a non-existent checkpoint returns None."""
-        config = {
+        config: RunnableConfig = {
             "configurable": {
                 "thread_id": "nonexistent-thread",
                 "checkpoint_ns": "",
@@ -253,30 +327,48 @@ class TestNeo4jSaver:
         thread_id_2 = f"test-thread-{uuid.uuid4()}"
 
         # Store checkpoint for thread 1
-        config_1 = {"configurable": {"thread_id": thread_id_1, "checkpoint_ns": ""}}
-        checkpoint_1 = {
-            "v": 1,
-            "id": "thread1-cp",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {"data": "thread1"},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
+        config_1: RunnableConfig = {
+            "configurable": {"thread_id": thread_id_1, "checkpoint_ns": ""}
         }
-        metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        checkpoint_1: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "thread1-cp",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {"data": "thread1"},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
         clean_neo4j_saver.put(config_1, checkpoint_1, metadata, {})
 
         # Store checkpoint for thread 2
-        config_2 = {"configurable": {"thread_id": thread_id_2, "checkpoint_ns": ""}}
-        checkpoint_2 = {
-            "v": 1,
-            "id": "thread2-cp",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {"data": "thread2"},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
+        config_2: RunnableConfig = {
+            "configurable": {"thread_id": thread_id_2, "checkpoint_ns": ""}
         }
+        checkpoint_2: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "thread2-cp",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {"data": "thread2"},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
         clean_neo4j_saver.put(config_2, checkpoint_2, metadata, {})
 
         # Verify threads are isolated
@@ -291,21 +383,28 @@ class TestNeo4jSaver:
     def test_config_missing_thread_id_raises(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test that missing thread_id raises ValueError."""
-        config: dict[str, Any] = {"configurable": {}}
+        config: RunnableConfig = {"configurable": {}}
 
         with pytest.raises(ValueError, match="thread_id is required"):
-            clean_neo4j_saver.put(config, sample_checkpoint, sample_metadata, {})
+            clean_neo4j_saver.put(
+                config,
+                cast(Checkpoint, sample_checkpoint),
+                cast(CheckpointMetadata, sample_metadata),
+                {},
+            )
 
     def test_put_writes_without_checkpoint_id_raises(
         self,
         clean_neo4j_saver: Neo4jSaver,
     ) -> None:
         """Test that put_writes without checkpoint_id raises ValueError."""
-        config = {"configurable": {"thread_id": "test", "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": "test", "checkpoint_ns": ""}
+        }
 
         with pytest.raises(ValueError, match="checkpoint_id is required"):
             clean_neo4j_saver.put_writes(config, [("channel", "value")], "task-1")
@@ -316,7 +415,9 @@ class TestNeo4jSaver:
     ) -> None:
         """Test that blob data is properly serialized to base64 and can be retrieved."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Create checkpoint with complex channel values
         complex_data = {
@@ -326,19 +427,30 @@ class TestNeo4jSaver:
             ],
             "nested": {"key": "value", "list": [1, 2, 3]},
         }
-        checkpoint = {
-            "v": 1,
-            "id": "test-cp-blob",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": complex_data,
-            "channel_versions": {
-                "messages": f"{1:032}.{0:016}",
-                "nested": f"{1:032}.{0:016}",
+        checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "test-cp-blob",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": complex_data,
+                "channel_versions": {
+                    "messages": f"{1:032}.{0:016}",
+                    "nested": f"{1:032}.{0:016}",
+                },
+                "versions_seen": {},
+                "pending_sends": [],
             },
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        )
+        metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
 
         # Store checkpoint
         result_config = clean_neo4j_saver.put(config, checkpoint, metadata, {})
@@ -360,19 +472,32 @@ class TestNeo4jSaver:
     ) -> None:
         """Test that blob data is stored as human-readable JSON strings in Neo4j."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Create checkpoint with channel values
-        checkpoint = {
-            "v": 1,
-            "id": "test-cp-json",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {"test_channel": {"key": "value"}},
-            "channel_versions": {"test_channel": f"{1:032}.{0:016}"},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "test-cp-json",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {"test_channel": {"key": "value"}},
+                "channel_versions": {"test_channel": f"{1:032}.{0:016}"},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
 
         # Store checkpoint
         clean_neo4j_saver.put(config, checkpoint, metadata, {})
@@ -415,15 +540,22 @@ class TestNeo4jSaver:
     def test_checkpoint_data_properly_stored_in_neo4j(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test that checkpoint data is properly stored and can be retrieved."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store checkpoint
-        clean_neo4j_saver.put(config, sample_checkpoint, sample_metadata, {})
+        clean_neo4j_saver.put(
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
+        )
 
         # Query Neo4j directly to verify checkpoint is stored as a string
         with clean_neo4j_saver._driver.session() as session:
@@ -431,7 +563,7 @@ class TestNeo4jSaver:
                 """
                 MATCH (t:Thread {thread_id: $thread_id})
                       -[:HAS_CHECKPOINT]->(c:Checkpoint)
-                RETURN c.checkpoint as checkpoint, c.metadata as metadata, 
+                RETURN c.checkpoint as checkpoint, c.metadata as metadata,
                        c.type as type
                 """,
                 {"thread_id": thread_id},
@@ -494,25 +626,38 @@ class TestNeo4jSaver:
     def test_graph_structure_created(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test that proper graph structure is created with Thread,
         Checkpoint nodes and relationships."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Create checkpoint with channel values
-        checkpoint = {
-            "v": 1,
-            "id": "test-cp-graph",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {"messages": [{"role": "user", "content": "Hello"}]},
-            "channel_versions": {"messages": f"{1:032}.{0:016}"},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "test-cp-graph",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {"messages": [{"role": "user", "content": "Hello"}]},
+                "channel_versions": {"messages": f"{1:032}.{0:016}"},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
 
         # Store checkpoint
         clean_neo4j_saver.put(config, checkpoint, metadata, {})
@@ -566,57 +711,92 @@ class TestNeo4jSaver:
         thread_id = f"test-thread-{uuid.uuid4()}"
 
         # Create parent checkpoint
-        parent_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
-        parent_checkpoint = {
-            "v": 1,
-            "id": "parent-cp-chain",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
+        parent_config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
         }
-        parent_metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        parent_checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "parent-cp-chain",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        parent_metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
         clean_neo4j_saver.put(parent_config, parent_checkpoint, parent_metadata, {})
 
         # Create child checkpoint with parent reference
-        child_config = {
+        child_config: RunnableConfig = {
             "configurable": {
                 "thread_id": thread_id,
                 "checkpoint_ns": "",
                 "checkpoint_id": "parent-cp-chain",  # This becomes parent
             }
         }
-        child_checkpoint = {
-            "v": 1,
-            "id": "child-cp-chain",
-            "ts": "2024-01-01T00:01:00Z",
-            "channel_values": {},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        child_metadata = {"source": "loop", "step": 1, "writes": {}, "parents": {}}
+        child_checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "child-cp-chain",
+                "ts": "2024-01-01T00:01:00Z",
+                "channel_values": {},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        child_metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "loop",
+                "step": 1,
+                "writes": {},
+                "parents": {},
+            },
+        )
         clean_neo4j_saver.put(child_config, child_checkpoint, child_metadata, {})
 
         # Create grandchild checkpoint
-        grandchild_config = {
+        grandchild_config: RunnableConfig = {
             "configurable": {
                 "thread_id": thread_id,
                 "checkpoint_ns": "",
                 "checkpoint_id": "child-cp-chain",  # This becomes parent
             }
         }
-        grandchild_checkpoint = {
-            "v": 1,
-            "id": "grandchild-cp-chain",
-            "ts": "2024-01-01T00:02:00Z",
-            "channel_values": {},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        grandchild_metadata = {"source": "loop", "step": 2, "writes": {}, "parents": {}}
+        grandchild_checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "grandchild-cp-chain",
+                "ts": "2024-01-01T00:02:00Z",
+                "channel_values": {},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        grandchild_metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "loop",
+                "step": 2,
+                "writes": {},
+                "parents": {},
+            },
+        )
         clean_neo4j_saver.put(
             grandchild_config, grandchild_checkpoint, grandchild_metadata, {}
         )
@@ -656,21 +836,26 @@ class TestNeo4jSaver:
     def test_pending_writes_graph_structure(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test that pending writes are stored as
         PendingWrite nodes with HAS_WRITE relationship."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Create checkpoint
         result_config = clean_neo4j_saver.put(
-            config, sample_checkpoint, sample_metadata, {}
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
         )
 
         # Store pending writes
-        writes = [
+        writes: list[tuple[str, Any]] = [
             ("messages", {"role": "user", "content": "Hello again"}),
             ("counter", 42),
         ]
@@ -709,19 +894,32 @@ class TestNeo4jSaver:
         """Test that delete_thread removes Thread,
         Checkpoint, and PendingWrite nodes."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Create checkpoint with channel values
-        checkpoint = {
-            "v": 1,
-            "id": "test-cp-delete",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {"messages": [{"role": "user", "content": "Hello"}]},
-            "channel_versions": {"messages": f"{1:032}.{0:016}"},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "test-cp-delete",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {"messages": [{"role": "user", "content": "Hello"}]},
+                "channel_versions": {"messages": f"{1:032}.{0:016}"},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
         result_config = clean_neo4j_saver.put(config, checkpoint, metadata, {})
 
         # Add pending writes
@@ -741,6 +939,7 @@ class TestNeo4jSaver:
                 {"thread_id": thread_id},
             )
             record = result.single()
+            assert record is not None
             assert record["threads"] == 1
             assert record["checkpoints"] == 1
             assert record["writes"] == 1
@@ -760,6 +959,7 @@ class TestNeo4jSaver:
                 {"thread_id": thread_id},
             )
             record = result.single()
+            assert record is not None
             assert record["threads"] == 0, "Thread should be deleted"
             assert record["checkpoints"] == 0, "Checkpoints should be deleted"
             assert record["writes"] == 0, "PendingWrites should be deleted"
@@ -767,15 +967,22 @@ class TestNeo4jSaver:
     def test_branch_created_on_first_checkpoint(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test that a 'main' branch is created when first checkpoint is stored."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store checkpoint
-        clean_neo4j_saver.put(config, sample_checkpoint, sample_metadata, {})
+        clean_neo4j_saver.put(
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
+        )
 
         # Verify Branch node was created
         with clean_neo4j_saver._driver.session() as session:
@@ -800,19 +1007,32 @@ class TestNeo4jSaver:
     ) -> None:
         """Test that branch HEAD is updated when new checkpoints are added."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store first checkpoint
-        checkpoint_1 = {
-            "v": 1,
-            "id": "cp-1",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        checkpoint_1: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "cp-1",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
         clean_neo4j_saver.put(config, checkpoint_1, metadata, {})
 
         # Verify HEAD points to cp-1
@@ -831,16 +1051,19 @@ class TestNeo4jSaver:
             assert record["head_id"] == "cp-1"
 
         # Store second checkpoint
-        checkpoint_2 = {
-            "v": 1,
-            "id": "cp-2",
-            "ts": "2024-01-01T00:01:00Z",
-            "channel_values": {},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        config_2 = {
+        checkpoint_2: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "cp-2",
+                "ts": "2024-01-01T00:01:00Z",
+                "channel_values": {},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        config_2: RunnableConfig = {
             "configurable": {
                 "thread_id": thread_id,
                 "checkpoint_ns": "",
@@ -869,16 +1092,23 @@ class TestNeo4jSaver:
     def test_checkpoint_linked_to_branch(
         self,
         clean_neo4j_saver: Neo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test that checkpoints are linked to their
         branch via ON_BRANCH relationship."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store checkpoint
-        clean_neo4j_saver.put(config, sample_checkpoint, sample_metadata, {})
+        clean_neo4j_saver.put(
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
+        )
 
         # Verify ON_BRANCH relationship exists
         with clean_neo4j_saver._driver.session() as session:
@@ -903,20 +1133,33 @@ class TestNeo4jSaver:
     ) -> None:
         """Test that get_tuple without checkpoint_id returns active branch HEAD."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store multiple checkpoints
         for i in range(3):
-            checkpoint = {
-                "v": 1,
-                "id": f"cp-{i}",
-                "ts": f"2024-01-0{i + 1}T00:00:00Z",
-                "channel_values": {"step": i},
-                "channel_versions": {"step": f"{i + 1:032}.{0:016}"},
-                "versions_seen": {},
-                "pending_sends": [],
-            }
-            metadata = {"source": "loop", "step": i, "writes": {}, "parents": {}}
+            checkpoint: Checkpoint = cast(
+                Checkpoint,
+                {
+                    "v": 1,
+                    "id": f"cp-{i}",
+                    "ts": f"2024-01-0{i + 1}T00:00:00Z",
+                    "channel_values": {"step": i},
+                    "channel_versions": {"step": f"{i + 1:032}.{0:016}"},
+                    "versions_seen": {},
+                    "pending_sends": [],
+                },
+            )
+            metadata: CheckpointMetadata = cast(
+                CheckpointMetadata,
+                {
+                    "source": "loop",
+                    "step": i,
+                    "writes": {},
+                    "parents": {},
+                },
+            )
             result = clean_neo4j_saver.put(config, checkpoint, metadata, {})
             config = {
                 "configurable": {
@@ -927,7 +1170,9 @@ class TestNeo4jSaver:
             }
 
         # Get without checkpoint_id should return HEAD of active branch (cp-2)
-        latest_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        latest_config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
         tuple_ = clean_neo4j_saver.get_tuple(latest_config)
 
         assert tuple_ is not None
@@ -941,19 +1186,32 @@ class TestNeo4jSaver:
         from langchain_neo4j.checkpoint.base import CYPHER_CREATE_BRANCH
 
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store initial checkpoint (creates main branch)
-        checkpoint = {
-            "v": 1,
-            "id": "cp-main",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "cp-main",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
         clean_neo4j_saver.put(config, checkpoint, metadata, {})
 
         # Create a second branch
@@ -995,19 +1253,32 @@ class TestNeo4jSaver:
         )
 
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config: RunnableConfig = {
+            "configurable": {"thread_id": thread_id, "checkpoint_ns": ""}
+        }
 
         # Store checkpoint (creates main branch)
-        checkpoint = {
-            "v": 1,
-            "id": "cp-main",
-            "ts": "2024-01-01T00:00:00Z",
-            "channel_values": {},
-            "channel_versions": {},
-            "versions_seen": {},
-            "pending_sends": [],
-        }
-        metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
+        checkpoint: Checkpoint = cast(
+            Checkpoint,
+            {
+                "v": 1,
+                "id": "cp-main",
+                "ts": "2024-01-01T00:00:00Z",
+                "channel_values": {},
+                "channel_versions": {},
+                "versions_seen": {},
+                "pending_sends": [],
+            },
+        )
+        metadata: CheckpointMetadata = cast(
+            CheckpointMetadata,
+            {
+                "source": "input",
+                "step": 0,
+                "writes": {},
+                "parents": {},
+            },
+        )
         clean_neo4j_saver.put(config, checkpoint, metadata, {})
 
         # Create second branch
@@ -1034,6 +1305,7 @@ class TestNeo4jSaver:
                 {"thread_id": thread_id},
             )
             record = result.single()
+            assert record is not None
             assert record["name"] == "main"
 
         # Switch to fork branch
@@ -1057,6 +1329,7 @@ class TestNeo4jSaver:
                 {"thread_id": thread_id},
             )
             record = result.single()
+            assert record is not None
             assert (
                 record["name"] == "fork-1"
             ), "Active branch should be switched to fork-1"

@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import uuid
-from typing import Any
+from typing import Any, cast
 
 import pytest
+from langchain_core.runnables import RunnableConfig
+from langgraph.checkpoint.base import Checkpoint, CheckpointMetadata
 
 from langchain_neo4j import AsyncNeo4jSaver
 
@@ -17,16 +19,22 @@ class TestAsyncNeo4jSaver:
     async def test_aput_and_aget_tuple(
         self,
         clean_async_neo4j_saver: AsyncNeo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test async storing and retrieving a checkpoint."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config = cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}},
+        )
 
         # Store checkpoint
         result_config = await clean_async_neo4j_saver.aput(
-            config, sample_checkpoint, sample_metadata, {}
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
         )
 
         # Verify returned config has checkpoint_id
@@ -48,11 +56,14 @@ class TestAsyncNeo4jSaver:
     ) -> None:
         """Test async retrieving latest checkpoint when no checkpoint_id specified."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config = cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}},
+        )
 
         # Store multiple checkpoints
         for i in range(3):
-            checkpoint = {
+            checkpoint: dict[str, Any] = {
                 "v": 1,
                 "id": f"checkpoint-{i}",
                 "ts": f"2024-01-0{i + 1}T00:00:00Z",
@@ -61,21 +72,35 @@ class TestAsyncNeo4jSaver:
                 "versions_seen": {},
                 "pending_sends": [],
             }
-            metadata = {"source": "loop", "step": i, "writes": {}, "parents": {}}
-
-            result = await clean_async_neo4j_saver.aput(
-                config, checkpoint, metadata, {}
-            )
-            config = {
-                "configurable": {
-                    "thread_id": thread_id,
-                    "checkpoint_ns": "",
-                    "checkpoint_id": result["configurable"]["checkpoint_id"],
-                }
+            metadata: dict[str, Any] = {
+                "source": "loop",
+                "step": i,
+                "writes": {},
+                "parents": {},
             }
 
+            result = await clean_async_neo4j_saver.aput(
+                config,
+                cast(Checkpoint, checkpoint),
+                cast(CheckpointMetadata, metadata),
+                {},
+            )
+            config = cast(
+                RunnableConfig,
+                {
+                    "configurable": {
+                        "thread_id": thread_id,
+                        "checkpoint_ns": "",
+                        "checkpoint_id": result["configurable"]["checkpoint_id"],
+                    }
+                },
+            )
+
         # Get without checkpoint_id should return latest
-        latest_config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        latest_config = cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}},
+        )
         tuple_ = await clean_async_neo4j_saver.aget_tuple(latest_config)
 
         assert tuple_ is not None
@@ -85,20 +110,26 @@ class TestAsyncNeo4jSaver:
     async def test_aput_writes(
         self,
         clean_async_neo4j_saver: AsyncNeo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test async storing pending writes."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config = cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}},
+        )
 
         # First create a checkpoint
         result_config = await clean_async_neo4j_saver.aput(
-            config, sample_checkpoint, sample_metadata, {}
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
         )
 
         # Store writes
-        writes = [
+        writes: list[tuple[str, Any]] = [
             ("messages", {"role": "user", "content": "Hello again"}),
             ("counter", 42),
         ]
@@ -110,6 +141,7 @@ class TestAsyncNeo4jSaver:
         tuple_ = await clean_async_neo4j_saver.aget_tuple(result_config)
 
         assert tuple_ is not None
+        assert tuple_.pending_writes is not None
         assert len(tuple_.pending_writes) == 2
 
         # Check writes content
@@ -127,8 +159,11 @@ class TestAsyncNeo4jSaver:
 
         # Store multiple checkpoints
         for i in range(5):
-            config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
-            checkpoint = {
+            config = cast(
+                RunnableConfig,
+                {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}},
+            )
+            checkpoint: dict[str, Any] = {
                 "v": 1,
                 "id": f"cp-{i:03d}",
                 "ts": f"2024-01-0{i + 1}T00:00:00Z",
@@ -137,13 +172,26 @@ class TestAsyncNeo4jSaver:
                 "versions_seen": {},
                 "pending_sends": [],
             }
-            metadata = {"source": "loop", "step": i, "writes": {}, "parents": {}}
-            await clean_async_neo4j_saver.aput(config, checkpoint, metadata, {})
+            metadata: dict[str, Any] = {
+                "source": "loop",
+                "step": i,
+                "writes": {},
+                "parents": {},
+            }
+            await clean_async_neo4j_saver.aput(
+                config,
+                cast(Checkpoint, checkpoint),
+                cast(CheckpointMetadata, metadata),
+                {},
+            )
 
         # List all
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        list_config = cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}},
+        )
         all_checkpoints = []
-        async for cp in clean_async_neo4j_saver.alist(config):
+        async for cp in clean_async_neo4j_saver.alist(list_config):
             all_checkpoints.append(cp)
 
         assert len(all_checkpoints) == 5
@@ -156,16 +204,22 @@ class TestAsyncNeo4jSaver:
     async def test_adelete_thread(
         self,
         clean_async_neo4j_saver: AsyncNeo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test async deleting all checkpoints for a thread."""
         thread_id = f"test-thread-{uuid.uuid4()}"
-        config = {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}}
+        config = cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": thread_id, "checkpoint_ns": ""}},
+        )
 
         # Store checkpoint
         await clean_async_neo4j_saver.aput(
-            config, sample_checkpoint, sample_metadata, {}
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
         )
 
         # Verify exists
@@ -185,12 +239,15 @@ class TestAsyncNeo4jSaver:
         clean_async_neo4j_saver: AsyncNeo4jSaver,
     ) -> None:
         """Test async retrieving a non-existent checkpoint returns None."""
-        config = {
-            "configurable": {
-                "thread_id": "nonexistent-thread",
-                "checkpoint_ns": "",
-            }
-        }
+        config = cast(
+            RunnableConfig,
+            {
+                "configurable": {
+                    "thread_id": "nonexistent-thread",
+                    "checkpoint_ns": "",
+                }
+            },
+        )
 
         tuple_ = await clean_async_neo4j_saver.aget_tuple(config)
         assert tuple_ is None
@@ -205,8 +262,11 @@ class TestAsyncNeo4jSaver:
         thread_id_2 = f"test-thread-{uuid.uuid4()}"
 
         # Store checkpoint for thread 1
-        config_1 = {"configurable": {"thread_id": thread_id_1, "checkpoint_ns": ""}}
-        checkpoint_1 = {
+        config_1 = cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": thread_id_1, "checkpoint_ns": ""}},
+        )
+        checkpoint_1: dict[str, Any] = {
             "v": 1,
             "id": "thread1-cp",
             "ts": "2024-01-01T00:00:00Z",
@@ -215,12 +275,25 @@ class TestAsyncNeo4jSaver:
             "versions_seen": {},
             "pending_sends": [],
         }
-        metadata = {"source": "input", "step": 0, "writes": {}, "parents": {}}
-        await clean_async_neo4j_saver.aput(config_1, checkpoint_1, metadata, {})
+        metadata: dict[str, Any] = {
+            "source": "input",
+            "step": 0,
+            "writes": {},
+            "parents": {},
+        }
+        await clean_async_neo4j_saver.aput(
+            config_1,
+            cast(Checkpoint, checkpoint_1),
+            cast(CheckpointMetadata, metadata),
+            {},
+        )
 
         # Store checkpoint for thread 2
-        config_2 = {"configurable": {"thread_id": thread_id_2, "checkpoint_ns": ""}}
-        checkpoint_2 = {
+        config_2 = cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": thread_id_2, "checkpoint_ns": ""}},
+        )
+        checkpoint_2: dict[str, Any] = {
             "v": 1,
             "id": "thread2-cp",
             "ts": "2024-01-01T00:00:00Z",
@@ -229,7 +302,12 @@ class TestAsyncNeo4jSaver:
             "versions_seen": {},
             "pending_sends": [],
         }
-        await clean_async_neo4j_saver.aput(config_2, checkpoint_2, metadata, {})
+        await clean_async_neo4j_saver.aput(
+            config_2,
+            cast(Checkpoint, checkpoint_2),
+            cast(CheckpointMetadata, metadata),
+            {},
+        )
 
         # Verify threads are isolated
         tuple_1 = await clean_async_neo4j_saver.aget_tuple(config_1)
@@ -244,15 +322,18 @@ class TestAsyncNeo4jSaver:
     async def test_async_config_missing_thread_id_raises(
         self,
         clean_async_neo4j_saver: AsyncNeo4jSaver,
-        sample_checkpoint: dict,
-        sample_metadata: dict,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
     ) -> None:
         """Test that async missing thread_id raises ValueError."""
-        config: dict[str, Any] = {"configurable": {}}
+        config = cast(RunnableConfig, {"configurable": {}})
 
         with pytest.raises(ValueError, match="thread_id is required"):
             await clean_async_neo4j_saver.aput(
-                config, sample_checkpoint, sample_metadata, {}
+                config,
+                cast(Checkpoint, sample_checkpoint),
+                cast(CheckpointMetadata, sample_metadata),
+                {},
             )
 
     @pytest.mark.asyncio
@@ -261,7 +342,10 @@ class TestAsyncNeo4jSaver:
         clean_async_neo4j_saver: AsyncNeo4jSaver,
     ) -> None:
         """Test that async put_writes without checkpoint_id raises ValueError."""
-        config = {"configurable": {"thread_id": "test", "checkpoint_ns": ""}}
+        config = cast(
+            RunnableConfig,
+            {"configurable": {"thread_id": "test", "checkpoint_ns": ""}},
+        )
 
         with pytest.raises(ValueError, match="checkpoint_id is required"):
             await clean_async_neo4j_saver.aput_writes(
