@@ -35,6 +35,7 @@ dependencies = [
     "langchain-core>=1.0.0,<2.0.0",
     "neo4j-graphrag>=1.12.0,<2.0.0",
     "neo4j>=5.25.0,<7.0.0",
+    "langgraph>=1.0.2,<1.1.0",
 ]
 description = "An integration package connecting Neo4j and LangChain"
 name = "langchain-neo4j"
