@@ -15,11 +15,11 @@ except metadata.PackageNotFoundError:
 del metadata  # optional, avoids polluting the results of dir(__package__)
 
 __all__ = [
+    "AsyncNeo4jSaver",
     "GraphCypherQAChain",
     "Neo4jChatMessageHistory",
     "Neo4jGraph",
-    "Neo4jVector",
     "Neo4jSaver",
-    "AsyncNeo4jSaver",
+    "Neo4jVector",
     "__version__",
 ]
