@@ -94,6 +94,59 @@ chain = GraphCypherQAChain.from_llm(llm=llm, graph=graph, allow_dangerous_reques
 chain.invoke({"query": "Who starred in Top Gun?"})
 ```
 
+### Neo4jSaver
+
+The `Neo4jSaver` provides a synchronous Neo4j checkpoint saver for LangGraph.
+
+This class implements the `BaseCheckpointSaver` interface using Neo4j
+as the persistence backend with a proper graph model. It supports
+storing checkpoints, channel states, and pending writes using
+relationships for efficient traversal.
+
+```python
+from langchain_neo4j import Neo4jSaver
+# Using from_conn_string (recommended)
+with Neo4jSaver.from_conn_string(
+    uri="bolt://localhost:7687",
+    user="neo4j",
+    password="password"
+) as checkpointer:
+    checkpointer.setup()  # Create indexes (run once)
+    graph = builder.compile(checkpointer=checkpointer)
+    result = graph.invoke({"messages": [...]}, config)
+
+# Using existing driver
+driver = GraphDatabase.driver(uri, auth=(user, password))
+checkpointer = Neo4jSaver(driver)
+checkpointer.setup()
+```
+
+### AsyncNeo4jSaver
+
+The `AsyncNeo4jSaver` provides asynchronous Neo4j checkpoint saver for LangGraph.
+
+This class implements the `BaseCheckpointSaver` interface using Neo4j
+as the persistence backend with async support and a proper graph model.
+It supports storing checkpoints, channel states, and pending writes
+using relationships for efficient traversal.
+
+```python
+# Using from_conn_string (recommended)
+async with await AsyncNeo4jSaver.from_conn_string(
+    uri="bolt://localhost:7687",
+    user="neo4j",
+    password="password"
+) as checkpointer:
+    await checkpointer.setup()  # Create indexes (run once)
+    graph = builder.compile(checkpointer=checkpointer)
+    result = await graph.ainvoke({"messages": [...]}, config)
+
+# Using existing async driver
+driver = AsyncGraphDatabase.driver(uri, auth=(user, password))
+checkpointer = AsyncNeo4jSaver(driver)
+await checkpointer.setup()
+```
+
 ## 🧪 Tests
 
 ### Unit Tests
