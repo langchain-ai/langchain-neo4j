@@ -41,7 +41,7 @@ description = "An integration package connecting Neo4j and LangChain"
 name = "langchain-neo4j"
 readme = "README.md"
 requires-python = ">=3.10,<3.15"
-version = "0.7.0"
+version = "0.8.0"
 
 [project.license]
 text = "MIT"

@@ -2,6 +2,13 @@
 
 ## Next
 
+## 0.8.0
+
+### Added
+
+- Added `Neo4jSaver`, a synchronous checkpoint saver for persisting LangGraph graph state in Neo4j.
+- Added `AsyncNeo4jSaver`, an asynchronous checkpoint saver for persisting LangGraph graph state in Neo4j.
+
 ## 0.7.0
 
 ### Added
