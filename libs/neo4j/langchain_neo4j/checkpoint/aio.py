@@ -100,6 +100,7 @@ class AsyncNeo4jSaver(BaseNeo4jSaver):
         user: str,
         password: str,
         database: str | None = None,
+        user_agent: str = "LangChain-Checkpoint",
     ) -> AsyncNeo4jSaver:
         """Create an AsyncNeo4jSaver from connection parameters.
 
@@ -127,7 +128,7 @@ class AsyncNeo4jSaver(BaseNeo4jSaver):
             ... finally:
             ...     await checkpointer.close()
         """
-        driver = await create_async_driver(uri, user, password)
+        driver = await create_async_driver(uri, user, password, user_agent=user_agent)
         saver = cls(driver, database)
         saver._owns_driver = True
         return saver

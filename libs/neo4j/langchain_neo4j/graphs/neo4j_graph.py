@@ -103,6 +103,7 @@ class Neo4jGraph(GraphStore):
         *,
         driver_config: Optional[Dict] = None,
         enhanced_schema: bool = False,
+        user_agent: str = "LangChain-Graph",
     ) -> None:
         """Create a new Neo4j graph wrapper instance.
 
@@ -150,9 +151,11 @@ class Neo4jGraph(GraphStore):
         database = get_from_dict_or_env(
             {"database": database}, "database", "NEO4J_DATABASE", "neo4j"
         )
-
+        user_agent = get_from_dict_or_env(
+            {"user_agent": user_agent}, "user_agent", "NEO4J_USER_AGENT"
+        )
         self._driver = neo4j.GraphDatabase.driver(
-            url, auth=auth, **(driver_config or {})
+            url, auth=auth, user_agent=user_agent, **(driver_config or {})
         )
         self._database = database
         self.timeout = timeout

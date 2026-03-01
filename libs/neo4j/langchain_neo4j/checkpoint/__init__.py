@@ -102,6 +102,7 @@ class Neo4jSaver(BaseNeo4jSaver):
         user: str,
         password: str,
         database: str | None = None,
+        user_agent: str = "LangChain-Checkpoint",
     ) -> Iterator[Neo4jSaver]:
         """Create a Neo4jSaver from connection parameters.
 
@@ -126,7 +127,7 @@ class Neo4jSaver(BaseNeo4jSaver):
             ...     checkpointer.setup()
             ...     # Use checkpointer...
         """
-        driver = create_driver(uri, user, password)
+        driver = create_driver(uri, user, password, user_agent=user_agent)
         saver = cls(driver, database)
         saver._owns_driver = True
         try:
