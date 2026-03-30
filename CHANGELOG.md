@@ -2,6 +2,8 @@
 
 ## Next
 
+## 0.9.0
+
 ## Added
 
 - Added LangChain-specific user-agent metadata to Neo4j driver initialization across graph, vectorstore, and checkpoint integrations.
