@@ -103,7 +103,9 @@ def test_graph_store_without_enhanced_schema() -> None:
         graph=graph,
         allow_dangerous_requests=True,
     )
-    assert chain.graph_schema == "Node properties:\n\nRelationship properties:\n\nThe relationships:\n"
+    assert chain.graph_schema == (
+        "Node properties:\n\nRelationship properties:\n\nThe relationships:\n"
+    )
 
 
 def test_graph_cypher_qa_chain_prompt_selection_1() -> None:
