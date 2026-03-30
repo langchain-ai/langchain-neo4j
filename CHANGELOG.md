@@ -2,6 +2,14 @@
 
 ## Next
 
+## Added
+
+- Added LangChain-specific user-agent metadata to Neo4j driver initialization across graph, vectorstore, and checkpoint integrations.
+
+## Fixed
+
+- Fixed `GraphCypherQAChain` compatibility with non-Neo4j `GraphStore` implementations (for example `AGEGraph`) by not requiring the private `_enhanced_schema` attribute.
+
 ## 0.8.0
 
 ### Added

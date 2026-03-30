@@ -67,10 +67,45 @@ class FakeGraphStore:
         pass
 
 
+class FakeGraphStoreWithoutEnhancedSchema:
+    @property
+    def get_schema(self) -> str:
+        return ""
+
+    @property
+    def get_structured_schema(self) -> Dict[str, Any]:
+        return {}
+
+    def query(self, query: str, params: dict = {}) -> List[Dict[str, Any]]:
+        return []
+
+    def refresh_schema(self) -> None:
+        pass
+
+    def add_graph_documents(
+        self, graph_documents: List[GraphDocument], include_source: bool = False
+    ) -> None:
+        pass
+
+
 def test_graph_store() -> None:
     """Tests that FakeGraphStore satisfies the GraphStore protocol requirements."""
     graph = FakeGraphStore()
     assert isinstance(graph, GraphStore)
+
+
+def test_graph_store_without_enhanced_schema() -> None:
+    """Graph stores without _enhanced_schema should still be supported."""
+    graph = FakeGraphStoreWithoutEnhancedSchema()
+    assert isinstance(graph, GraphStore)
+    chain = GraphCypherQAChain.from_llm(
+        llm=FakeLLM(),
+        graph=graph,
+        allow_dangerous_requests=True,
+    )
+    assert chain.graph_schema == (
+        "Node properties:\n\nRelationship properties:\n\nThe relationships:\n"
+    )
 
 
 def test_graph_cypher_qa_chain_prompt_selection_1() -> None:
