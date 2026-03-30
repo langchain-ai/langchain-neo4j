@@ -125,7 +125,9 @@ def test_neo4j_graph_init_with_empty_credentials() -> None:
         Neo4jGraph(
             url="bolt://localhost:7687", username="", password="", refresh_schema=False
         )
-        mock_driver.assert_called_with("bolt://localhost:7687", auth=None)
+        mock_driver.assert_called_with(
+            "bolt://localhost:7687", auth=None, user_agent="LangChain-Graph"
+        )
 
 
 def test_neo4j_graph_init_with_token() -> None:
@@ -140,7 +142,9 @@ def test_neo4j_graph_init_with_token() -> None:
             refresh_schema=False,
         )
         mock_driver.assert_called_with(
-            "bolt://localhost:7687", auth=bearer_auth("my-bearer-token")
+            "bolt://localhost:7687",
+            auth=bearer_auth("my-bearer-token"),
+            user_agent="LangChain-Graph",
         )
 
 

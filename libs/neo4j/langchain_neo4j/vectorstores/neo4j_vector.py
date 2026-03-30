@@ -178,6 +178,7 @@ class Neo4jVector(VectorStore):
         index_type: IndexType = DEFAULT_INDEX_TYPE,
         graph: Optional[Neo4jGraph] = None,
         embedding_dimension: Optional[int] = None,
+        user_agent: str = "LangChain-Vector",
     ) -> None:
         # Allow only cosine and euclidean distance strategies
         if distance_strategy not in [
@@ -208,8 +209,13 @@ class Neo4jVector(VectorStore):
             database = get_from_dict_or_env(
                 {"database": database}, "database", "NEO4J_DATABASE", "neo4j"
             )
+            user_agent = get_from_dict_or_env(
+                {"user_agent": user_agent}, "user_agent", "NEO4J_USER_AGENT"
+            )
 
-            self._driver = neo4j.GraphDatabase.driver(url, auth=(username, password))
+            self._driver = neo4j.GraphDatabase.driver(
+                url, auth=(username, password), user_agent=user_agent
+            )
             self._database = database
             # Verify connection
             try:
