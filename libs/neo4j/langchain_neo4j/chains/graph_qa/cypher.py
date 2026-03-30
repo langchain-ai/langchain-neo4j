@@ -291,11 +291,12 @@ class GraphCypherQAChain(Chain):
                 "can be provided, but not both"
             )
         graph = kwargs["graph"]
+        is_enhanced_schema = bool(getattr(graph, "_enhanced_schema", False))
         graph_schema = construct_schema(
             graph.get_structured_schema,
             include_types,
             exclude_types,
-            graph._enhanced_schema,
+            is_enhanced_schema,
         )
 
         cypher_query_corrector = None
