@@ -11,6 +11,7 @@
 ## Fixed
 
 - Fixed `GraphCypherQAChain` compatibility with non-Neo4j `GraphStore` implementations (for example `AGEGraph`) by not requiring the private `_enhanced_schema` attribute.
+- Added `DataIngestionNotSupported` exception to be raised when trying to ingest data to a relationship index.
 
 ## 0.8.0
 
