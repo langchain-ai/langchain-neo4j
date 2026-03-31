@@ -1,3 +1,4 @@
+import os
 from typing import Generator
 from unittest.mock import MagicMock, patch
 
@@ -150,7 +151,14 @@ def test_neo4j_graph_init_with_token() -> None:
 
 def test_neo4j_graph_init_without_credentials() -> None:
     """Test the __init__ method raises error when no credentials are provided."""
-    with patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver:
+    with (
+        patch("neo4j.GraphDatabase.driver", autospec=True) as mock_driver,
+        patch.dict(os.environ),
+    ):
+        os.environ.pop("NEO4J_URI", None)
+        os.environ.pop("NEO4J_USERNAME", None)
+        os.environ.pop("NEO4J_PASSWORD", None)
+
         mock_driver_instance = MagicMock()
         mock_driver.return_value = mock_driver_instance
         mock_driver_instance.verify_connectivity.return_value = None
