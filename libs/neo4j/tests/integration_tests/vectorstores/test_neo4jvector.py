@@ -1,5 +1,6 @@
 """Test Neo4jVector functionality."""
 
+import hashlib
 import os
 from typing import Any, Dict, List, cast
 
@@ -28,6 +29,13 @@ from tests.integration_tests.vectorstores.fixtures.filtering_test_cases import (
 OS_TOKEN_COUNT = 1536
 
 texts = ["foo", "bar", "baz", "It is the end of the world. Take shelter!"]
+documents = [
+    Document(
+        page_content=page_content,
+        metadata={"id": hashlib.md5(page_content.encode("utf-8")).hexdigest()},
+    )
+    for page_content in texts
+]
 
 """
 cd tests/integration_tests/docker-compose
@@ -81,7 +89,7 @@ def test_neo4jvector() -> None:
         pre_delete_collection=True,
     )
     output = docsearch.similarity_search("foo", k=1)
-    assert output == [Document(page_content="foo")]
+    assert output == [documents[0]]
 
     drop_vector_indexes(docsearch)
 
@@ -97,7 +105,7 @@ def test_neo4jvector_euclidean(neo4j_credentials: Neo4jCredentials) -> None:
         **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
-    assert output == [Document(page_content="foo")]
+    assert output == [documents[0]]
 
     drop_vector_indexes(docsearch)
 
@@ -114,7 +122,7 @@ def test_neo4jvector_embeddings(neo4j_credentials: Neo4jCredentials) -> None:
         **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
-    assert output == [Document(page_content="foo")]
+    assert output == [documents[0]]
 
     drop_vector_indexes(docsearch)
 
@@ -138,7 +146,7 @@ def test_neo4jvector_catch_wrong_index_name(
         **neo4j_credentials,
     )
     output = existing.similarity_search("foo", k=1)
-    assert output == [Document(page_content="foo")]
+    assert output == [documents[0]]
 
     drop_vector_indexes(existing)
 
@@ -163,7 +171,7 @@ def test_neo4jvector_catch_wrong_node_label(
         **neo4j_credentials,
     )
     output = existing.similarity_search("foo", k=1)
-    assert output == [Document(page_content="foo")]
+    assert output == [documents[0]]
 
     drop_vector_indexes(existing)
 
@@ -180,7 +188,12 @@ def test_neo4jvector_with_metadatas(neo4j_credentials: Neo4jCredentials) -> None
         **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
-    assert output == [Document(page_content="foo", metadata={"page": "0"})]
+    assert output == [
+        Document(
+            page_content=documents[0].page_content,
+            metadata=documents[0].metadata | {"page": "0"},
+        )
+    ]
 
     drop_vector_indexes(docsearch)
 
@@ -202,7 +215,15 @@ def test_neo4jvector_with_metadatas_with_scores(
         (doc, round(score, 1))
         for doc, score in docsearch.similarity_search_with_score("foo", k=1)
     ]
-    assert output == [(Document(page_content="foo", metadata={"page": "0"}), 1.0)]
+    assert output == [
+        (
+            Document(
+                page_content=documents[0].page_content,
+                metadata=documents[0].metadata | {"page": "0"},
+            ),
+            1.0,
+        )
+    ]
 
     drop_vector_indexes(docsearch)
 
@@ -254,7 +275,10 @@ def test_neo4jvector_retriever_search_threshold(
     output = retriever.invoke("foo")
 
     assert output == [
-        Document(page_content="foo", metadata={"page": "0"}),
+        Document(
+            page_content=documents[0].page_content,
+            metadata=documents[0].metadata | {"page": "0"},
+        ),
     ]
 
     drop_vector_indexes(docsearch)
@@ -305,7 +329,7 @@ def test_neo4jvector_prefer_indexname(neo4j_credentials: Neo4jCredentials) -> No
     )
 
     output = existing_index.similarity_search("bar", k=1)
-    assert output == [Document(page_content="bar", metadata={})]
+    assert output == [documents[1]]
     drop_vector_indexes(existing_index)
 
 
@@ -342,10 +366,7 @@ def test_neo4jvector_prefer_indexname_insert(
     existing_index.add_documents([Document(page_content="bar", metadata={})])
 
     output = existing_index.similarity_search("bar", k=2)
-    assert output == [
-        Document(page_content="bar", metadata={}),
-        Document(page_content="foo", metadata={}),
-    ]
+    assert output == [documents[1], documents[0]]
     drop_vector_indexes(existing_index)
 
 
@@ -362,7 +383,7 @@ def test_neo4jvector_hybrid(neo4j_credentials: Neo4jCredentials) -> None:
         **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
-    assert output == [Document(page_content="foo")]
+    assert output == [documents[0]]
 
     drop_vector_indexes(docsearch)
 
@@ -381,11 +402,7 @@ def test_neo4jvector_hybrid_deduplicate(neo4j_credentials: Neo4jCredentials) -> 
     )
     output = docsearch.similarity_search("foo", k=3)
 
-    assert output == [
-        Document(page_content="foo"),
-        Document(page_content="It is the end of the world. Take shelter!"),
-        Document(page_content="baz"),
-    ]
+    assert output == [documents[0], documents[3], documents[2]]
 
     drop_vector_indexes(docsearch)
 
@@ -478,7 +495,7 @@ def test_neo4jvector_hybrid_from_existing(neo4j_credentials: Neo4jCredentials) -
     )
 
     output = existing.similarity_search("foo", k=1)
-    assert output == [Document(page_content="foo")]
+    assert output == [documents[0]]
 
     drop_vector_indexes(existing)
 
@@ -638,9 +655,7 @@ def test_neo4jvector_special_character(neo4j_credentials: Neo4jCredentials) -> N
         k=1,
     )
 
-    assert output == [
-        Document(page_content="It is the end of the world. Take shelter!", metadata={})
-    ]
+    assert output == [documents[3]]
 
     drop_vector_indexes(docsearch)
 
@@ -807,8 +822,6 @@ def test_metadata_filters_type1(neo4j_credentials: Neo4jCredentials) -> None:
         # We don't return id properties from similarity search by default
         # Also remove any key where the value is None
         for doc in expected_output:
-            if "id" in doc.metadata:
-                del doc.metadata["id"]
             keys_with_none = [
                 key for key, value in doc.metadata.items() if value is None
             ]
@@ -993,7 +1006,7 @@ def test_neo4jvector_passing_graph_object(neo4j_credentials: Neo4jCredentials) -
         **neo4j_credentials,
     )
     output = docsearch.similarity_search("foo", k=1)
-    assert output == [Document(page_content="foo")]
+    assert output == [documents[0]]
 
     drop_vector_indexes(docsearch)
     os.environ["NEO4J_URI"] = old_url
