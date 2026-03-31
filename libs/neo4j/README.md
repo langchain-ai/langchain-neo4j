@@ -186,7 +186,7 @@ To lint it, run:
 make lint
 ```
 
-To format the `pyproject. ` file, run:
+To format the `pyproject.toml` file, run:
 
 ```bash
 uv run pyprojectsort pyproject.toml
