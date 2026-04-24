@@ -11,6 +11,7 @@
 ## Fixed
 
 - Fixed `GraphCypherQAChain` compatibility with non-Neo4j `GraphStore` implementations (for example `AGEGraph`) by not requiring the private `_enhanced_schema` attribute.
+- Skipped removal of `id` property from search query results, this field can now present in retrieved documents' metadata.
 
 ## 0.8.0
 
