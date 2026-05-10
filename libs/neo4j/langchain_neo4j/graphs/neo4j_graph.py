@@ -31,7 +31,8 @@ def _get_node_import_query(baseEntityLabel: bool, include_source: bool) -> str:
             "SET source += row.properties "
             f"{'MERGE (d)-[:MENTIONS]->(source) ' if include_source else ''}"
             "WITH source, row "
-            "CALL apoc.create.addLabels( source, [row.type] ) YIELD node "
+            "FOREACH (label IN [row.type] | SET source:$(label)) "
+            "WITH source AS node "
             "RETURN distinct 'done' AS result"
         )
     else:
