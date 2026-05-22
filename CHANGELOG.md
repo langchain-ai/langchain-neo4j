@@ -2,17 +2,24 @@
 
 ## Next
 
+### Added
+
+- `DataIngestionNotSupported` exception to be raised when trying to ingest data to a relationship index.
+
+### Changed
+
+- Skipped removal of `id` property from search query results, this field can now present in retrieved documents' metadata.
+
+
 ## 0.9.0
 
-## Added
+### Added
 
 - Added LangChain-specific user-agent metadata to Neo4j driver initialization across graph, vectorstore, and checkpoint integrations.
 
-## Fixed
+### Fixed
 
 - Fixed `GraphCypherQAChain` compatibility with non-Neo4j `GraphStore` implementations (for example `AGEGraph`) by not requiring the private `_enhanced_schema` attribute.
-- Added `DataIngestionNotSupported` exception to be raised when trying to ingest data to a relationship index.
-- Skipped removal of `id` property from search query results, this field can now present in retrieved documents' metadata.
 
 ## 0.8.0
 
@@ -29,7 +36,7 @@
 - Added support for Python 3.14.
 - Added support for Neo4j Python Driver v6.0.0+.
 
-## Changed
+### Changed
 
 - Switched project/dependency management from Poetry to uv.
 - Updated docstrings/reference-doc formatting for the new LangChain reference docs site (MkDocs/Markdown).
