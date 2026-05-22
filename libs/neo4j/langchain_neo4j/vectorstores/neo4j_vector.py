@@ -740,7 +740,7 @@ class Neo4jVector(VectorStore):
             f"{entity_prefix} "
             "{.*, "
             f"`{self.text_node_property}`: Null, "
-            f"`{self.embedding_node_property}`: Null, id: Null "
+            f"`{self.embedding_node_property}`: Null "
         )
         if kwargs.get("return_embeddings"):
             default_retrieval += (
@@ -1403,7 +1403,7 @@ def _text_node_props_retrieval_query(
         " str + '\\n' + k + ': ' + coalesce(node[k], '')) AS text, "
         "node {.*, `"
         + embedding_node_property
-        + "`: Null, id: Null, "
+        + "`: Null, "
         + ", ".join([f"`{prop}`: Null" for prop in text_node_properties])
         + "} AS metadata, score"
     )
