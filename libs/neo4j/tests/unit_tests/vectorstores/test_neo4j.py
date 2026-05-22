@@ -5,9 +5,11 @@ from unittest.mock import MagicMock, patch
 
 import neo4j
 import pytest
+from neo4j_graphrag.types import EntityType as IndexType
 from neo4j_graphrag.types import SearchType
 
 from langchain_neo4j.vectorstores.neo4j_vector import (
+    DataIngestionNotSupported,
     Neo4jVector,
     check_if_not_null,
     dict_to_yaml_str,
@@ -968,3 +970,37 @@ def test_from_existing_index_without_text_node_properties(
 
     # Without text_node_properties, retrieval_query should be empty (uses default)
     assert vector_store.retrieval_query == ""
+
+
+def test_add_embeddings_relationship_index(mock_vector_store: Neo4jVector) -> None:
+    """
+    Test that add_embeddings raises DataIngestionNotSupported
+    when relationship index is used.
+    """
+
+    mock_vector_store._index_type = IndexType.RELATIONSHIP
+
+    with pytest.raises(DataIngestionNotSupported) as exc_info:
+        mock_vector_store.add_embeddings(texts=["some_text"], embeddings=[[0] * 64])
+
+    assert (
+        str(exc_info.value)
+        == "Data ingestion is not supported with relationship vector index."
+    )
+
+
+def test_add_texts_relationship_index(mock_vector_store: Neo4jVector) -> None:
+    """
+    Test that add_texts raises DataIngestionNotSupported
+    when relationship index is used.
+    """
+
+    mock_vector_store._index_type = IndexType.RELATIONSHIP
+
+    with pytest.raises(DataIngestionNotSupported) as exc_info:
+        mock_vector_store.add_texts(texts=["some_text"])
+
+    assert (
+        str(exc_info.value)
+        == "Data ingestion is not supported with relationship vector index."
+    )
