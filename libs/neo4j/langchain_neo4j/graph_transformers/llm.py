@@ -849,6 +849,8 @@ class LLMGraphTransformer:
             parsed_json = self.json_repair.loads(raw_schema)
             if isinstance(parsed_json, dict):
                 parsed_json = [parsed_json]
+            elif not isinstance(parsed_json, list):
+                parsed_json = []
             for rel in parsed_json:
                 # Check if mandatory properties are there
                 if (
@@ -952,6 +954,8 @@ class LLMGraphTransformer:
             parsed_json = self.json_repair.loads(raw_schema)
             if isinstance(parsed_json, dict):
                 parsed_json = [parsed_json]
+            elif not isinstance(parsed_json, list):
+                parsed_json = []
             for rel in parsed_json:
                 # Check if mandatory properties are there
                 if (
