@@ -3,7 +3,11 @@
 from typing import Any, Dict, List, Mapping, Optional, cast
 
 from langchain_core.callbacks import CallbackManagerForLLMRun
+from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.language_models.llms import LLM
+from langchain_core.messages import AIMessage, BaseMessage
+from langchain_core.outputs import ChatGeneration, ChatResult
+from langchain_core.runnables import Runnable, RunnableLambda
 from pydantic import validator
 
 
@@ -62,3 +66,45 @@ class FakeLLM(LLM):
 
     def bind_tools(self, tools: Any) -> None:
         pass
+
+
+class FakeStructuredChatModel(BaseChatModel):
+    """Fake chat model that returns a pre-canned structured-output response.
+
+    Designed for testing code that calls
+    ``llm.with_structured_output(..., include_raw=True)`` (e.g.
+    ``LLMGraphTransformer`` in function-calling mode). The ``response``
+    attribute is yielded verbatim from the runnable returned by
+    ``with_structured_output``.
+    """
+
+    response: Any = None
+
+    @property
+    def _llm_type(self) -> str:
+        return "fake-structured"
+
+    def _generate(
+        self,
+        messages: List[BaseMessage],
+        stop: Optional[List[str]] = None,
+        run_manager: Optional[Any] = None,
+        **kwargs: Any,
+    ) -> ChatResult:
+        return ChatResult(generations=[ChatGeneration(message=AIMessage(content=""))])
+
+    def with_structured_output(
+        self, schema: Any, *, include_raw: bool = False, **kwargs: Any
+    ) -> Runnable:
+        response = self.response
+
+        def _emit(_: Any) -> Any:
+            if include_raw:
+                return {
+                    "raw": AIMessage(content=""),
+                    "parsed": response,
+                    "parsing_error": None,
+                }
+            return response
+
+        return RunnableLambda(_emit)
