@@ -4,6 +4,7 @@ from langchain_neo4j.chains.graph_qa.cypher import GraphCypherQAChain
 from langchain_neo4j.chat_message_histories.neo4j import Neo4jChatMessageHistory
 from langchain_neo4j.checkpoint import Neo4jSaver
 from langchain_neo4j.checkpoint.aio import AsyncNeo4jSaver
+from langchain_neo4j.graph_transformers.llm import LLMGraphTransformer
 from langchain_neo4j.graphs.neo4j_graph import Neo4jGraph
 from langchain_neo4j.vectorstores.neo4j_vector import Neo4jVector
 
@@ -19,6 +20,7 @@ __all__ = [
     "GraphCypherQAChain",
     "Neo4jChatMessageHistory",
     "Neo4jGraph",
+    "LLMGraphTransformer",
     "Neo4jSaver",
     "Neo4jVector",
     "__version__",
