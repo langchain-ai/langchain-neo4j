@@ -147,6 +147,64 @@ checkpointer = AsyncNeo4jSaver(driver)
 await checkpointer.setup()
 ```
 
+### LLMGraphTransformer
+
+The `LLMGraphTransformer` allows for building graphs using an LLM.
+
+```python
+from langchain_core.documents import Document
+from langchain_openai import ChatOpenAI
+
+from langchain_neo4j import LLMGraphTransformer
+
+text = """
+Marie Curie, 7 November 1867 – 4 July 1934, was a Polish and naturalised-French physicist and chemist who conducted pioneering research on radioactivity.
+She was the first woman to win a Nobel Prize, the first person to win a Nobel Prize twice, and the only person to win a Nobel Prize in two scientific fields.
+Her husband, Pierre Curie, was a co-winner of her first Nobel Prize, making them the first-ever married couple to win the Nobel Prize and launching the Curie family legacy of five Nobel Prizes.
+She was, in 1906, the first woman to become a professor at the University of Paris.
+Also, Robin Williams.
+"""
+documents = [Document(page_content=text)]
+llm = ChatOpenAI(
+    temperature=0,
+    api_key="sk-...",  # Replace with your OpenAI API key
+)
+transformer = LLMGraphTransformer(llm=llm)
+graph_documents = transformer.convert_to_graph_documents(documents)
+```
+
+Example output:
+```python
+[
+    GraphDocument(
+        nodes=[
+            Node(id="Marie Curie", type="Person", properties={}),
+            Node(id="Pierre Curie", type="Person", properties={}),
+            Node(id="University Of Paris", type="University", properties={}),
+            Node(id="Robin Williams", type="Person", properties={}),
+        ],
+        relationships=[
+            Relationship(
+                source=Node(id="Marie Curie", type="Person", properties={}),
+                target=Node(id="Pierre Curie", type="Person", properties={}),
+                type="SPOUSE",
+                properties={},
+            ),
+            Relationship(
+                source=Node(id="Marie Curie", type="Person", properties={}),
+                target=Node(id="University Of Paris", type="University", properties={}),
+                type="PROFESSOR",
+                properties={},
+            ),
+        ],
+        source=Document(
+            metadata={},
+            page_content="\nMarie Curie, 7 November 1867 – 4 July 1934, was a Polish and naturalised-French physicist and chemist who conducted pioneering research on radioactivity.\nShe was the first woman to win a Nobel Prize, the first person to win a Nobel Prize twice, and the only person to win a Nobel Prize in two scientific fields.\nHer husband, Pierre Curie, was a co-winner of her first Nobel Prize, making them the first-ever married couple to win the Nobel Prize and launching the Curie family legacy of five Nobel Prizes.\nShe was, in 1906, the first woman to become a professor at the University of Paris.\nAlso, Robin Williams.\n",
+        ),
+    )
+]
+```
+
 ## 🧪 Tests
 
 ### Unit Tests
