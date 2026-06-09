@@ -2,7 +2,6 @@ import asyncio
 import json
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Type, Union, cast
 
-from langchain_community.graphs.graph_document import GraphDocument, Node, Relationship
 from langchain_core.documents import Document
 from langchain_core.language_models import BaseLanguageModel
 from langchain_core.messages import SystemMessage
@@ -14,6 +13,8 @@ from langchain_core.prompts import (
 )
 from langchain_core.runnables import RunnableConfig
 from pydantic import BaseModel, Field, create_model
+
+from langchain_neo4j.graphs.graph_document import GraphDocument, Node, Relationship
 
 DEFAULT_NODE_TYPE = "Node"
 
