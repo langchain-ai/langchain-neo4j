@@ -4,6 +4,7 @@ EXPECTED_ALL = [
     "AsyncNeo4jSaver",
     "GraphCypherQAChain",
     "Neo4jChatMessageHistory",
+    "LLMGraphTransformer",
     "Neo4jGraph",
     "Neo4jSaver",
     "Neo4jVector",
