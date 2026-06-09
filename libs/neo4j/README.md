@@ -149,7 +149,9 @@ await checkpointer.setup()
 
 ### LLMGraphTransformer
 
-The `LLMGraphTransformer` allows for building graphs using an LLM.
+The `LLMGraphTransformer` class transforms text documents into graph documents using an LLM.
+It extracts nodes and relationships from unstructured text, with optional constraints on allowed node types, relationship types, and properties.
+The resulting graph documents can be added to a `Neo4jGraph` to build a knowledge graph from text.
 
 ```python
 from langchain_core.documents import Document
@@ -171,38 +173,6 @@ llm = ChatOpenAI(
 )
 transformer = LLMGraphTransformer(llm=llm)
 graph_documents = transformer.convert_to_graph_documents(documents)
-```
-
-Example output:
-```python
-[
-    GraphDocument(
-        nodes=[
-            Node(id="Marie Curie", type="Person", properties={}),
-            Node(id="Pierre Curie", type="Person", properties={}),
-            Node(id="University Of Paris", type="University", properties={}),
-            Node(id="Robin Williams", type="Person", properties={}),
-        ],
-        relationships=[
-            Relationship(
-                source=Node(id="Marie Curie", type="Person", properties={}),
-                target=Node(id="Pierre Curie", type="Person", properties={}),
-                type="SPOUSE",
-                properties={},
-            ),
-            Relationship(
-                source=Node(id="Marie Curie", type="Person", properties={}),
-                target=Node(id="University Of Paris", type="University", properties={}),
-                type="PROFESSOR",
-                properties={},
-            ),
-        ],
-        source=Document(
-            metadata={},
-            page_content="\nMarie Curie, 7 November 1867 – 4 July 1934, was a Polish and naturalised-French physicist and chemist who conducted pioneering research on radioactivity.\nShe was the first woman to win a Nobel Prize, the first person to win a Nobel Prize twice, and the only person to win a Nobel Prize in two scientific fields.\nHer husband, Pierre Curie, was a co-winner of her first Nobel Prize, making them the first-ever married couple to win the Nobel Prize and launching the Curie family legacy of five Nobel Prizes.\nShe was, in 1906, the first woman to become a professor at the University of Paris.\nAlso, Robin Williams.\n",
-        ),
-    )
-]
 ```
 
 ## 🧪 Tests
