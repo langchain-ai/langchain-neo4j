@@ -5,6 +5,7 @@
 ### Added
 
 - `DataIngestionNotSupported` exception to be raised when trying to ingest data to a relationship index.
+- `LLMGraphTransformer` for converting text documents into graph documents using an LLM, migrated from `langchain-experimental`.
 
 ### Changed
 
