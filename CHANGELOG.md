@@ -2,6 +2,8 @@
 
 ## Next
 
+## 0.10.0
+
 ### Added
 
 - `DataIngestionNotSupported` exception to be raised when trying to ingest data to a relationship index.
@@ -14,7 +16,6 @@
 ### Fixed
 
 - Replaced deprecated `apoc.create.addLabels` with native Cypher dynamic label assignment in `Neo4jGraph`.
-
 
 ## 0.9.0
 
