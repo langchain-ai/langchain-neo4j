@@ -147,6 +147,34 @@ checkpointer = AsyncNeo4jSaver(driver)
 await checkpointer.setup()
 ```
 
+### LLMGraphTransformer
+
+The `LLMGraphTransformer` class transforms text documents into graph documents using an LLM.
+It extracts nodes and relationships from unstructured text, with optional constraints on allowed node types, relationship types, and properties.
+The resulting graph documents can be added to a `Neo4jGraph` to build a knowledge graph from text.
+
+```python
+from langchain_core.documents import Document
+from langchain_openai import ChatOpenAI
+
+from langchain_neo4j import LLMGraphTransformer
+
+text = """
+Marie Curie, 7 November 1867 – 4 July 1934, was a Polish and naturalised-French physicist and chemist who conducted pioneering research on radioactivity.
+She was the first woman to win a Nobel Prize, the first person to win a Nobel Prize twice, and the only person to win a Nobel Prize in two scientific fields.
+Her husband, Pierre Curie, was a co-winner of her first Nobel Prize, making them the first-ever married couple to win the Nobel Prize and launching the Curie family legacy of five Nobel Prizes.
+She was, in 1906, the first woman to become a professor at the University of Paris.
+Also, Robin Williams.
+"""
+documents = [Document(page_content=text)]
+llm = ChatOpenAI(
+    temperature=0,
+    api_key="sk-...",  # Replace with your OpenAI API key
+)
+transformer = LLMGraphTransformer(llm=llm)
+graph_documents = transformer.convert_to_graph_documents(documents)
+```
+
 ## 🧪 Tests
 
 ### Unit Tests

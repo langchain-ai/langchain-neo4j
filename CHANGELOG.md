@@ -5,10 +5,15 @@
 ### Added
 
 - `DataIngestionNotSupported` exception to be raised when trying to ingest data to a relationship index.
+- `LLMGraphTransformer` for converting text documents into graph documents using an LLM, migrated from `langchain-experimental`.
 
 ### Changed
 
 - Skipped removal of `id` property from search query results, this field can now present in retrieved documents' metadata.
+
+### Fixed
+
+- Replaced deprecated `apoc.create.addLabels` with native Cypher dynamic label assignment in `Neo4jGraph`.
 
 
 ## 0.9.0
