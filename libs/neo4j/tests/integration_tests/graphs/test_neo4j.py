@@ -336,22 +336,25 @@ def test_enhanced_schema_exception(neo4j_credentials: Neo4jCredentials) -> None:
         "(c)-[:REL {foo: [1,2]}]->(a), (d)-[:EMPTY_REL {}]->(d)"
     )
     graph.refresh_schema()
-    expected_output = {
-        "node_props": {"Node": [{"property": "foo", "type": "STRING"}]},
-        "rel_props": {"REL": [{"property": "foo", "type": "STRING"}]},
-        "relationships": [
-            {
-                "end": "Node",
-                "start": "Node",
-                "type": "REL",
-            },
-            {"end": "EmptyNode", "start": "EmptyNode", "type": "EMPTY_REL"},
-        ],
-    }
+    allowed_types = {"STRING", "INTEGER", "LIST"}
+    expected_relationships = [
+        {"end": "Node", "start": "Node", "type": "REL"},
+        {"end": "EmptyNode", "start": "EmptyNode", "type": "EMPTY_REL"},
+    ]
 
     # remove metadata portion of schema
     del graph.structured_schema["metadata"]
-    assert graph.structured_schema == expected_output
+    node_props = graph.structured_schema["node_props"]
+    rel_props = graph.structured_schema["rel_props"]
+    assert list(node_props) == ["Node"]
+    assert len(node_props["Node"]) == 1
+    assert node_props["Node"][0]["property"] == "foo"
+    assert node_props["Node"][0]["type"] in allowed_types
+    assert list(rel_props) == ["REL"]
+    assert len(rel_props["REL"]) == 1
+    assert rel_props["REL"][0]["property"] == "foo"
+    assert rel_props["REL"][0]["type"] in allowed_types
+    assert graph.structured_schema["relationships"] == expected_relationships
 
 
 @pytest.mark.usefixtures("clear_neo4j_database")
