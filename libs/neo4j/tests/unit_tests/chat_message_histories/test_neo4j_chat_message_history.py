@@ -44,3 +44,24 @@ def test_driver_closed_on_delete() -> None:
         message_store.__del__()
         gc.collect()
         mock_driver.close.assert_called_once()
+
+
+def test_borrowed_driver_not_closed_on_delete() -> None:
+    """A driver borrowed from a Neo4jGraph (``graph=``) must not be closed on delete.
+
+    The history object does not own the shared driver, so closing it on
+    ``__del__`` would break the caller's Neo4jGraph and any other object
+    reusing the same connection.
+    """
+    graph = MagicMock()
+    graph._driver = MagicMock()
+    graph._database = "neo4j"
+    message_store = Neo4jChatMessageHistory(
+        session_id="test_session",
+        graph=graph,
+    )
+    borrowed_driver = message_store._driver
+    assert borrowed_driver is graph._driver
+    message_store.__del__()
+    gc.collect()
+    borrowed_driver.close.assert_not_called()

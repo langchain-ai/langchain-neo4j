@@ -36,6 +36,8 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
 
         # Graph object takes precedent over env or input params
         if graph:
+            # Driver is borrowed from the caller's Neo4jGraph; do not close it.
+            self._owns_driver = False
             self._driver = graph._driver
             self._database = graph._database
         else:
@@ -52,6 +54,8 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
             )
 
             self._driver = neo4j.GraphDatabase.driver(url, auth=(username, password))
+            # Driver is created and owned here, so it must be closed on delete.
+            self._owns_driver = True
             self._database = database
             # Verify connection
             try:
@@ -136,5 +140,9 @@ class Neo4jChatMessageHistory(BaseChatMessageHistory):
             )
 
     def __del__(self) -> None:
-        if self._driver:
-            self._driver.close()
+        # Only close a driver we created; a driver borrowed from a Neo4jGraph
+        # is owned by the caller and closing it would break their connection.
+        if getattr(self, "_owns_driver", False):
+            driver = getattr(self, "_driver", None)
+            if driver is not None:
+                driver.close()
