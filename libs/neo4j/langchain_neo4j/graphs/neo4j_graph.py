@@ -220,8 +220,8 @@ class Neo4jGraph(GraphStore):
     def query(
         self,
         query: str,
-        params: dict = {},
-        session_params: dict = {},
+        params: Optional[dict] = None,
+        session_params: Optional[dict] = None,
     ) -> List[Dict[str, Any]]:
         """Query Neo4j database.
 
@@ -240,6 +240,13 @@ class Neo4jGraph(GraphStore):
         self._check_driver_state()
         from neo4j import Query
         from neo4j.exceptions import Neo4jError
+
+        params = params or {}
+        # Work on a fresh dict so the implicit-transaction fallback below never
+        # mutates a shared mutable default (or the caller's dict). A mutable
+        # default here leaked one instance's database into other Neo4jGraph
+        # instances via ``session_params.setdefault("database", ...)``.
+        session_params = dict(session_params) if session_params else {}
 
         if not session_params:
             try:
