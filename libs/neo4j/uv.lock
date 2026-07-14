@@ -395,11 +395,11 @@ wheels = [
 
 [[package]]
 name = "json-repair"
-version = "0.44.1"
+version = "0.60.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/a8/6b/ed6e92efc5acfbc9c35ccae1676b70e4adb1552421e64f838c2a3f097d9a/json_repair-0.44.1.tar.gz", hash = "sha256:1130eb9733b868dac1340b43cb2effebb519ae6d52dd2d0728c6cca517f1e0b4", size = 32886, upload-time = "2025-04-30T16:09:38.54Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/a6/d69888cb4ffde30e80db1e6c32caaadd2f984a80067d5ea72c2cb3f61c3f/json_repair-0.60.1.tar.gz", hash = "sha256:841661cdd2df507c9a4e189097f38ca6bc372e06d4b4e36d72e590f68176c290", size = 49451, upload-time = "2026-06-03T17:28:44.451Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/82/b4/3cbd27a3240b2962c3b87bbb1c20eb6c56e5b26cde61f141f86ca98e2f68/json_repair-0.44.1-py3-none-any.whl", hash = "sha256:51d82532c3b8263782a301eb7904c75dce5fee8c0d1aba490287fc0ab779ac50", size = 22478, upload-time = "2025-04-30T16:09:37.303Z" },
+    { url = "https://files.pythonhosted.org/packages/32/1f/2a2b5eea8ef5762a86ad3f8fddddaaba2c0d76dd44e644b9158900868bec/json_repair-0.60.1-py3-none-any.whl", hash = "sha256:ba6ff974f2a8bef2f7768144a7f03f870a816443f03da27a49cdd0ec31a78049", size = 48045, upload-time = "2026-06-03T17:28:43.038Z" },
 ]
 
 [[package]]
@@ -784,7 +784,7 @@ wheels = [
 
 [[package]]
 name = "neo4j-graphrag"
-version = "1.12.0"
+version = "1.18.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "fsspec" },
@@ -800,9 +800,9 @@ dependencies = [
     { name = "tenacity" },
     { name = "types-pyyaml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/73/f1/d03400f0154581b5c353be1d0829c6949bd88348f91e1902ed99878822c3/neo4j_graphrag-1.12.0.tar.gz", hash = "sha256:17625c403907e38be65d465354d1d19ff466b30a4449ffe93f9a6d5b5578d974", size = 1292917, upload-time = "2026-01-08T16:06:23.916Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/58/50/31f8332b01673c53241026921fae1ac7795ef4f2ebc7224c2d14cc521345/neo4j_graphrag-1.18.0.tar.gz", hash = "sha256:c5accf78b8c0a5cdf6ca70ec2fdad69812631e4a2b5430af0ff4752e6c446298", size = 1349614, upload-time = "2026-06-24T09:12:05.074Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/03/1513675b26b6713592c76eec505edfe9733147efc0e3a5a9b3e01321ba0d/neo4j_graphrag-1.12.0-py3-none-any.whl", hash = "sha256:4c44030d15f00a5fc540eb02666523b7f301652e70250953f6c79b35ee5b95d4", size = 207961, upload-time = "2026-01-08T16:06:22.523Z" },
+    { url = "https://files.pythonhosted.org/packages/ab/9f/627401aa9b021af8b314015fecd5b07b85870ac098c7613eadea0a90b584/neo4j_graphrag-1.18.0-py3-none-any.whl", hash = "sha256:5cbd35146940ff821bbe0a914264c60d8a72b10fb730c8f8bb1173eb4e5d6b5a", size = 263691, upload-time = "2026-06-24T09:12:03.525Z" },
 ]
 
 [[package]]
