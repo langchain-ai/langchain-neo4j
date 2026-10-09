@@ -672,10 +672,10 @@ def test_hybrid_score_normalization(neo4j_credentials: Neo4jCredentials) -> None
         search_type=SearchType.HYBRID,
         **neo4j_credentials,
     )
-    # Remove deduplication part of the query
+    # Remove the deduplication clause, including any ordering tie-breakers.
     rrf_query = (
         _get_hybrid_query(neo4j_version_is_5_23_or_above=False)
-        .rstrip("WITH node, max(score) AS score ORDER BY score DESC LIMIT $top_k")
+        .rsplit("WITH node, max(score) AS score", maxsplit=1)[0]
         .replace("UNION", "UNION ALL")
         + "RETURN node.text AS text, score LIMIT 2"
     )
