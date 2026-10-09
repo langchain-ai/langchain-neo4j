@@ -2,6 +2,20 @@
 
 ## Next
 
+## 0.11.0
+
+### Changed
+
+- Updated locked dependencies, including `neo4j-graphrag`, `langchain-core`, LangGraph components, `json-repair`, and transitive dependencies. Declared dependency ranges are unchanged.
+- Updated the NumPy lock entry from the withdrawn 2.4.0 release to 2.4.6 for Python 3.11 and later; Python 3.10 continues to use NumPy 2.2.6.
+
+### Fixed
+
+- Prevented `Neo4jGraph.query` from mutating shared or caller-provided session parameters, which could route queries to another graph instance's database. ([#128](https://github.com/langchain-ai/langchain-neo4j/pull/128))
+- Fixed `Neo4jVector.similarity_search_by_vector` and `similarity_search_with_score_by_vector` raising `KeyError` when no query text is supplied for vector-only searches. ([#129](https://github.com/langchain-ai/langchain-neo4j/pull/129))
+- Prevented `Neo4jChatMessageHistory` from closing a driver borrowed from a `Neo4jGraph` when the history object is destroyed, preserving shared connections. ([#130](https://github.com/langchain-ai/langchain-neo4j/pull/130))
+- Fixed asynchronous `LLMGraphTransformer` parsing to skip non-dictionary elements in repaired JSON output, matching the synchronous behavior. ([#131](https://github.com/langchain-ai/langchain-neo4j/pull/131))
+
 ## 0.10.0
 
 ### Added
