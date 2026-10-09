@@ -507,7 +507,7 @@ typing = [
 [package.metadata]
 requires-dist = [
     { name = "langchain-classic", specifier = ">=1.0.0,<2.0.0" },
-    { name = "langchain-core", specifier = ">=1.0.0,<2.0.0" },
+    { name = "langchain-core", specifier = ">=1.4.7,<2.0.0" },
     { name = "langgraph", specifier = ">=1.0.2,<2.0.0" },
     { name = "neo4j", specifier = ">=5.25.0,<7.0.0" },
     { name = "neo4j-graphrag", specifier = ">=1.12.0,<2.0.0" },
