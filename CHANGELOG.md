@@ -2,6 +2,10 @@
 
 ## Next
 
+### Changed
+
+- `Neo4jVector` now queries node vector indexes with the Cypher `SEARCH` clause when the server supports it (Neo4j 2026.01 or later), instead of the deprecated `db.index.vector.queryNodes` procedure. If the `SEARCH` query fails, or finds nothing while the procedure does (for example because `node_label` does not match the label of the index), it falls back to the procedure. Hybrid search, relationship indexes and metadata-filtered searches still use the procedure.
+
 ## 0.10.0
 
 ### Added

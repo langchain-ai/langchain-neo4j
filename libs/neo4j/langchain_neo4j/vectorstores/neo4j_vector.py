@@ -48,6 +48,9 @@ DISTANCE_MAPPING: Final[dict[DistanceStrategy, Literal["euclidean", "cosine"]]] 
 }
 DEFAULT_SEARCH_TYPE = SearchType.VECTOR
 DEFAULT_INDEX_TYPE = IndexType.NODE
+# First Neo4j release that can query vector indexes with the Cypher `SEARCH` clause.
+# `db.index.vector.queryNodes` is deprecated in favour of it.
+SEARCH_CLAUSE_MIN_VERSION: Final[Tuple[int, ...]] = (2026, 1, 0)
 
 
 def check_if_not_null(props: List[str], values: List[Any]) -> None:
@@ -241,6 +244,7 @@ class Neo4jVector(VectorStore):
         self.schema = ""
         # Verify if the version support vector index
         self._is_enterprise = False
+        self._supports_search_clause = False
         self.verify_version()
 
         # Verify that required values are not null
@@ -359,6 +363,7 @@ class Neo4jVector(VectorStore):
         )
         self._is_enterprise = is_enterprise
         self.neo4j_version_is_5_23_or_above = is_version_5_23_or_above(version_tuple)
+        self._supports_search_clause = version_tuple >= SEARCH_CLAUSE_MIN_VERSION
         if not has_vector_index_support(version_tuple):
             raise ValueError(
                 "Vector index is only supported in Neo4j version 5.11 or greater"
@@ -709,6 +714,20 @@ class Neo4jVector(VectorStore):
         )
         return docs
 
+    def _use_search_clause(self, filter: Optional[Dict[str, Any]]) -> bool:
+        """Whether a search can use the Cypher `SEARCH` clause.
+
+        Only unfiltered vector searches on a node index are supported. Hybrid search,
+        relationship indexes and metadata filters keep using the procedure-based
+        queries built by `neo4j_graphrag.neo4j_queries.get_search_query`.
+        """
+        return (
+            self._supports_search_clause
+            and not filter
+            and self.search_type == SearchType.VECTOR
+            and self._index_type != IndexType.RELATIONSHIP
+        )
+
     def similarity_search_with_score_by_vector(
         self,
         embedding: List[float],
@@ -792,7 +811,40 @@ class Neo4jVector(VectorStore):
             **filter_params,
         }
 
-        results = self.query(read_query, params=parameters)
+        results: Optional[List[Dict[str, Any]]] = None
+        if self._use_search_clause(filter):
+            try:
+                results = self.query(
+                    _build_search_clause_query(
+                        self.node_label, self.index_name, retrieval_query
+                    ),
+                    params=parameters,
+                )
+            except neo4j.exceptions.ClientError as e:
+                self.logger.warning(
+                    "SEARCH clause query failed; falling back to "
+                    "db.index.vector.queryNodes. Error: %s",
+                    e,
+                )
+                self._supports_search_clause = False
+            else:
+                if not results:
+                    # SEARCH only considers nodes with `node_label`, whereas the
+                    # procedure searches the whole index regardless of the label,
+                    # so confirm an empty result with the procedure.
+                    results = self.query(read_query, params=parameters)
+                    if results:
+                        self.logger.warning(
+                            "SEARCH clause found nothing, but db.index.vector."
+                            "queryNodes found results: node_label `%s` does not "
+                            "match the label of vector index `%s`. Using "
+                            "db.index.vector.queryNodes.",
+                            self.node_label,
+                            self.index_name,
+                        )
+                        self._supports_search_clause = False
+        if results is None:
+            results = self.query(read_query, params=parameters)
 
         if any(result.get("text") is None for result in results):
             if not self.retrieval_query:
@@ -1401,6 +1453,39 @@ class Neo4jVector(VectorStore):
                 f" for distance_strategy of {self._distance_strategy}."
                 "Consider providing relevance_score_fn to PGVector constructor."
             )
+
+
+def _build_search_clause_query(
+    node_label: str, index_name: str, retrieval_query: str
+) -> str:
+    """
+    Create a Cypher query that searches a node vector index with the `SEARCH` clause.
+
+    It takes the same parameters (`$query_vector`, `$top_k` and
+    `$effective_search_ratio`) as the procedure-based query and yields the same
+    `node` and `score` variables, so the `retrieval_query` can be shared.
+    The `CYPHER 25` prefix makes the query work when the database's default Cypher
+    version is 5.
+
+    Args:
+        node_label: Label of the nodes covered by the vector index.
+        index_name: Name of the vector index.
+        retrieval_query: The `RETURN` statement applied to the search results.
+
+    Returns:
+        A Cypher query string.
+    """
+    label = node_label.replace("`", "``")
+    index = index_name.replace("`", "``")
+    return (
+        f"CYPHER 25 MATCH (node:`{label}`) "
+        f"SEARCH node IN (VECTOR INDEX `{index}` "
+        "FOR $query_vector "
+        "LIMIT $top_k * $effective_search_ratio) "
+        "SCORE AS score "
+        "WITH node, score ORDER BY score DESC LIMIT $top_k "
+        f"{retrieval_query}"
+    )
 
 
 def _text_node_props_retrieval_query(

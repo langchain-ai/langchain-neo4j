@@ -11,6 +11,7 @@ from neo4j_graphrag.types import SearchType
 from langchain_neo4j.vectorstores.neo4j_vector import (
     DataIngestionNotSupported,
     Neo4jVector,
+    _build_search_clause_query,
     check_if_not_null,
     dict_to_yaml_str,
     remove_lucene_chars,
@@ -1020,3 +1021,197 @@ def test_add_texts_relationship_index(mock_vector_store: Neo4jVector) -> None:
         str(exc_info.value)
         == "Data ingestion is not supported with relationship vector index."
     )
+
+
+@pytest.mark.parametrize(
+    "description, version, supports_search_clause",
+    [
+        ("SemVer", (5, 26, 0), False),
+        ("CalVer, before SEARCH", (2025, 12, 0), False),
+        ("CalVer, first with SEARCH", (2026, 1, 0), True),
+        ("CalVer, after SEARCH", (2026, 9, 0), True),
+    ],
+)
+@patch("langchain_neo4j.vectorstores.neo4j_vector.get_version")
+def test_search_clause_version_check(
+    mock_get_version: MagicMock,
+    mock_vector_store: Neo4jVector,
+    description: str,
+    version: tuple[int, int, int],
+    supports_search_clause: bool,
+) -> None:
+    mock_get_version.return_value = version, False, False
+    mock_vector_store.verify_version()
+    assert (
+        mock_vector_store._supports_search_clause is supports_search_clause
+    ), f"Failed test case: {description}"
+
+
+def test_build_search_clause_query() -> None:
+    assert _build_search_clause_query("Chunk", "vector", "RETURN node, score") == (
+        "CYPHER 25 MATCH (node:`Chunk`) "
+        "SEARCH node IN (VECTOR INDEX `vector` FOR $query_vector "
+        "LIMIT $top_k * $effective_search_ratio) "
+        "SCORE AS score "
+        "WITH node, score ORDER BY score DESC LIMIT $top_k "
+        "RETURN node, score"
+    )
+
+
+def test_build_search_clause_query_escapes_backticks() -> None:
+    query = _build_search_clause_query("My`Label", "my`index", "RETURN node, score")
+    assert "(node:`My``Label`)" in query
+    assert "VECTOR INDEX `my``index`" in query
+
+
+_SEARCH_ROWS = [
+    {"text": "some text", "score": 0.9, "metadata": {"title": "a title"}},
+]
+
+
+def _search(vector_store: Neo4jVector, **kwargs: Any) -> Any:
+    return vector_store.similarity_search_with_score_by_vector(
+        embedding=[0.1] * 64, k=3, query="a question", **kwargs
+    )
+
+
+def test_similarity_search_uses_search_clause_when_supported(
+    neo4j_vector_factory: Any,
+) -> None:
+    vector_store = neo4j_vector_factory()
+    vector_store._supports_search_clause = True
+    vector_store.embedding_dimension = 64
+
+    with patch.object(Neo4jVector, "query", return_value=_SEARCH_ROWS) as mock_query:
+        docs = _search(vector_store, effective_search_ratio=2)
+
+    mock_query.assert_called_once()
+    query = mock_query.call_args.args[0]
+    params = mock_query.call_args.kwargs["params"]
+    assert query.startswith(
+        "CYPHER 25 MATCH (node:`Chunk`) "
+        "SEARCH node IN (VECTOR INDEX `vector` FOR $query_vector "
+        "LIMIT $top_k * $effective_search_ratio) SCORE AS score "
+        "WITH node, score ORDER BY score DESC LIMIT $top_k RETURN node.`text` AS text"
+    )
+    assert "queryNodes" not in query
+    assert params["top_k"] == 3
+    assert params["effective_search_ratio"] == 2
+    assert params["query_vector"] == [0.1] * 64
+    assert [(doc.page_content, doc.metadata, score) for doc, score in docs] == [
+        ("some text", {"title": "a title"}, 0.9)
+    ]
+
+
+def test_similarity_search_keeps_procedure_when_search_clause_unsupported(
+    neo4j_vector_factory: Any,
+) -> None:
+    vector_store = neo4j_vector_factory()
+    vector_store._supports_search_clause = False
+    vector_store.embedding_dimension = 64
+
+    with patch.object(Neo4jVector, "query", return_value=_SEARCH_ROWS) as mock_query:
+        _search(vector_store)
+
+    mock_query.assert_called_once()
+    query = mock_query.call_args.args[0]
+    assert "CALL db.index.vector.queryNodes" in query
+    assert "SEARCH" not in query
+
+
+@pytest.mark.parametrize(
+    "description, search_type, index_type, search_filter",
+    [
+        ("metadata filter", SearchType.VECTOR, IndexType.NODE, {"field": "value"}),
+        ("hybrid search", SearchType.HYBRID, IndexType.NODE, None),
+        ("relationship index", SearchType.VECTOR, IndexType.RELATIONSHIP, None),
+    ],
+)
+def test_similarity_search_skips_search_clause_for_unsupported_cases(
+    neo4j_vector_factory: Any,
+    description: str,
+    search_type: SearchType,
+    index_type: IndexType,
+    search_filter: Optional[dict],
+) -> None:
+    vector_store = neo4j_vector_factory()
+    vector_store._supports_search_clause = True
+    vector_store.support_metadata_filter = True
+    vector_store.search_type = search_type
+    vector_store._index_type = index_type
+    vector_store.embedding_dimension = 64
+
+    with patch.object(Neo4jVector, "query", return_value=_SEARCH_ROWS) as mock_query:
+        _search(vector_store, filter=search_filter)
+
+    mock_query.assert_called_once()
+    assert (
+        "SEARCH node IN" not in mock_query.call_args.args[0]
+    ), f"Failed test case: {description}"
+
+
+def test_similarity_search_falls_back_when_search_clause_fails(
+    neo4j_vector_factory: Any,
+) -> None:
+    vector_store = neo4j_vector_factory()
+    vector_store._supports_search_clause = True
+    vector_store.embedding_dimension = 64
+
+    with patch.object(
+        Neo4jVector,
+        "query",
+        side_effect=[
+            neo4j.exceptions.ClientError("SEARCH is not available"),
+            _SEARCH_ROWS,
+            _SEARCH_ROWS,
+        ],
+    ) as mock_query:
+        first = _search(vector_store)
+        second = _search(vector_store)
+
+    queries = [call.args[0] for call in mock_query.call_args_list]
+    assert len(queries) == 3
+    assert "SEARCH node IN" in queries[0]
+    # The failed attempt is retried with the procedure, and later searches skip SEARCH
+    assert "CALL db.index.vector.queryNodes" in queries[1]
+    assert "CALL db.index.vector.queryNodes" in queries[2]
+    assert vector_store._supports_search_clause is False
+    assert first[0][0].page_content == second[0][0].page_content == "some text"
+
+
+def test_similarity_search_confirms_empty_search_clause_results(
+    neo4j_vector_factory: Any,
+) -> None:
+    """SEARCH only sees nodes with `node_label`; the procedure ignores the label."""
+    vector_store = neo4j_vector_factory()
+    vector_store._supports_search_clause = True
+    vector_store.embedding_dimension = 64
+
+    with patch.object(
+        Neo4jVector, "query", side_effect=[[], _SEARCH_ROWS, _SEARCH_ROWS]
+    ) as mock_query:
+        first = _search(vector_store)
+        second = _search(vector_store)
+
+    queries = [call.args[0] for call in mock_query.call_args_list]
+    assert len(queries) == 3
+    assert "SEARCH node IN" in queries[0]
+    assert "CALL db.index.vector.queryNodes" in queries[1]
+    assert "CALL db.index.vector.queryNodes" in queries[2]
+    assert vector_store._supports_search_clause is False
+    assert first[0][0].page_content == second[0][0].page_content == "some text"
+
+
+def test_similarity_search_keeps_search_clause_when_procedure_is_empty_too(
+    neo4j_vector_factory: Any,
+) -> None:
+    vector_store = neo4j_vector_factory()
+    vector_store._supports_search_clause = True
+    vector_store.embedding_dimension = 64
+
+    with patch.object(Neo4jVector, "query", side_effect=[[], []]) as mock_query:
+        docs = _search(vector_store)
+
+    assert docs == []
+    assert mock_query.call_count == 2
+    assert vector_store._supports_search_clause is True
