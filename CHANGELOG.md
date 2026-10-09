@@ -6,7 +6,8 @@
 
 ### Changed
 
-- Updated locked dependencies, including `neo4j-graphrag`, `langchain-core`, LangGraph components, `json-repair`, and transitive dependencies. Declared dependency ranges are unchanged.
+- Updated locked dependencies, including `neo4j-graphrag`, `langchain-core`, LangGraph components, `json-repair`, and transitive dependencies.
+- Raised the minimum `langchain-core` version to 1.4.7 for compatibility with the locked LangGraph dependencies.
 - Updated the NumPy lock entry from the withdrawn 2.4.0 release to 2.4.6 for Python 3.11 and later; Python 3.10 continues to use NumPy 2.2.6.
 
 ### Fixed
