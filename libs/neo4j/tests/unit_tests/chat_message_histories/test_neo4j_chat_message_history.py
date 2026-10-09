@@ -64,4 +64,5 @@ def test_borrowed_driver_not_closed_on_delete() -> None:
     assert borrowed_driver is graph._driver
     message_store.__del__()
     gc.collect()
+    assert isinstance(borrowed_driver.close, MagicMock)
     borrowed_driver.close.assert_not_called()
