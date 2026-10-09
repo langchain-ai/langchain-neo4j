@@ -191,6 +191,27 @@ async def test_aconvert_to_graph_documents_prompt_based_path() -> None:
     assert graph_doc.relationships[0].type == "WORKS_AT"
 
 
+async def test_aconvert_to_graph_documents_skips_non_dict_elements() -> None:
+    """Async prompt-based path must skip non-dict JSON elements, not crash.
+
+    json_repair can parse the LLM output into a list whose elements are not
+    dicts. The sync process_response guards this with ``not isinstance(rel, dict)``;
+    the async path must do the same, otherwise ``rel.get("head")`` on a string
+    raises ``AttributeError``.
+    """
+    response = '["Person", "Company"]'
+    llm = FakeLLM(queries={"_": response}, sequential_responses=True)
+    transformer = LLMGraphTransformer(llm=llm)
+
+    docs = await transformer.aconvert_to_graph_documents(
+        [Document(page_content="Alice works at Acme")]
+    )
+
+    assert len(docs) == 1
+    assert docs[0].nodes == []
+    assert docs[0].relationships == []
+
+
 # ---------- Strict-mode filtering ----------
 
 
