@@ -780,7 +780,13 @@ class Neo4jVector(VectorStore):
             "top_k": k,
             "query_vector": embedding,
             "fulltext_index_name": self.keyword_index_name,
-            "query_text": remove_lucene_chars(kwargs["query"]),
+            # query_text is only consumed by hybrid (full-text) search; pure
+            # vector-by-vector callers pass no "query", so default to "" instead
+            # of raising KeyError. (Guard on membership, not .get(), because
+            # remove_lucene_chars(None) would itself raise.)
+            "query_text": remove_lucene_chars(kwargs["query"])
+            if "query" in kwargs
+            else "",
             "effective_search_ratio": effective_search_ratio,
             **params,
             **filter_params,

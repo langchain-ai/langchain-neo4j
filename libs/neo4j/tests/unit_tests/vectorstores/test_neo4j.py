@@ -498,6 +498,22 @@ def test_similarity_search_by_vector_metadata_filter_unsupported(
     )
 
 
+def test_similarity_search_by_vector_without_query_kwarg(
+    neo4j_vector_factory: Any,
+) -> None:
+    """Pure vector search via similarity_search_by_vector must not require a
+    'query' kwarg (query_text is only used by hybrid search)."""
+    vector_store = neo4j_vector_factory()
+    vector_store.support_metadata_filter = True
+    vector_store.search_type = SearchType.VECTOR
+    vector_store.embedding_dimension = 64
+
+    with patch.object(Neo4jVector, "query", return_value=[]):
+        docs = vector_store.similarity_search_by_vector(embedding=[0] * 64)
+
+    assert docs == []
+
+
 def test_similarity_search_by_vector_metadata_filter_hybrid(
     neo4j_vector_factory: Any,
 ) -> None:
