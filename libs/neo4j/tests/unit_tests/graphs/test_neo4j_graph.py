@@ -253,6 +253,43 @@ def test_query_fallback_execution(mock_neo4j_driver: MagicMock) -> None:
     assert json_data == [{"key1": "value1"}]
 
 
+def test_query_fallback_does_not_leak_database_across_instances(
+    mock_neo4j_driver: MagicMock,
+) -> None:
+    """The implicit-transaction fallback must not mutate the shared ``session_params``
+    default; otherwise one ``Neo4jGraph``'s database leaks into another's queries."""
+    err = Neo4jError._basic_hydrate(
+        neo4j_code="Neo.DatabaseError.Statement.ExecutionFailed",
+        message="in an implicit transaction",
+    )
+    mock_neo4j_driver.execute_query.side_effect = err
+    mock_session = MagicMock()
+    mock_session.run.return_value = []
+    mock_neo4j_driver.session.return_value.__enter__.return_value = mock_session
+    mock_neo4j_driver.session.return_value.__exit__.return_value = None
+
+    graph_a = Neo4jGraph(
+        url="bolt://localhost:7687",
+        username="neo4j",
+        password="password",
+        database="db_a",
+        refresh_schema=False,
+    )
+    graph_a.query("MATCH (n) RETURN n")  # fallback path, default session_params
+
+    graph_b = Neo4jGraph(
+        url="bolt://localhost:7687",
+        username="neo4j",
+        password="password",
+        database="db_b",
+        refresh_schema=False,
+    )
+    graph_b.query("MATCH (n) RETURN n")
+
+    # graph_b must run against its OWN database, not graph_a's.
+    mock_neo4j_driver.session.assert_called_with(database="db_b")
+
+
 def test_refresh_schema_handles_client_error(mock_neo4j_driver: MagicMock) -> None:
     """Test refresh schema handles a client error which might arise due to a user
     not having access to schema information"""
