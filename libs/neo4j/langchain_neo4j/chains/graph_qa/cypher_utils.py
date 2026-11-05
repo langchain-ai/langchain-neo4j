@@ -107,6 +107,7 @@ class CypherQueryCorrector:
             str_node: node in string format
             node_variable_dict: dictionary of node variables
         """
+        str_node = re.sub(self.property_pattern, "", str_node).strip()
         splitted_node = str_node.split(":")
         variable = splitted_node[0]
         labels = []
