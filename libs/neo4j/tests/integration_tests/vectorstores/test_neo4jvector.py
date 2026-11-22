@@ -1010,3 +1010,51 @@ def test_neo4jvector_passing_graph_object(neo4j_credentials: Neo4jCredentials) -
 
     drop_vector_indexes(docsearch)
     os.environ["NEO4J_URI"] = old_url
+
+
+def _stored_ids(store: Neo4jVector) -> List[str]:
+    rows = store.query(f"MATCH (n:`{store.node_label}`) RETURN n.id AS id ORDER BY id")
+    return [row["id"] for row in rows]
+
+
+@pytest.mark.usefixtures("clear_neo4j_database")
+def test_neo4jvector_add_documents_with_and_without_ids(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
+    """A document without an id gets the MD5 hash of its text, as when none has one."""
+    docsearch = Neo4jVector.from_texts(
+        texts=["baz"],
+        embedding=FakeEmbeddingsWithOsDimension(),
+        pre_delete_collection=True,
+        **neo4j_credentials,
+    )
+
+    ids = docsearch.add_documents(
+        [Document(page_content="foo", id="doc-1"), Document(page_content="bar")]
+    )
+
+    bar_id = hashlib.md5("bar".encode("utf-8")).hexdigest()
+    baz_id = hashlib.md5("baz".encode("utf-8")).hexdigest()
+    assert ids == ["doc-1", bar_id]
+    assert _stored_ids(docsearch) == sorted(["doc-1", bar_id, baz_id])
+
+    drop_vector_indexes(docsearch)
+
+
+@pytest.mark.usefixtures("clear_neo4j_database")
+def test_neo4jvector_from_documents_with_and_without_ids(
+    neo4j_credentials: Neo4jCredentials,
+) -> None:
+    """`from_documents` passes the document ids on in the same way."""
+    docsearch = Neo4jVector.from_documents(
+        [Document(page_content="foo", id="doc-1"), Document(page_content="bar")],
+        embedding=FakeEmbeddingsWithOsDimension(),
+        pre_delete_collection=True,
+        **neo4j_credentials,
+    )
+
+    assert _stored_ids(docsearch) == sorted(
+        ["doc-1", hashlib.md5("bar".encode("utf-8")).hexdigest()]
+    )
+
+    drop_vector_indexes(docsearch)
