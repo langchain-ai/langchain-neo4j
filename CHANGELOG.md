@@ -4,7 +4,7 @@
 
 ### Fixed
 
-- Fixed `Neo4jVector.add_documents` failing with `Cannot merge the following node because of null property value for 'id'` when only some of the documents have an `id`; documents without one now get the MD5 hash of their text, as when none has an `id`. `Neo4jVector.from_documents` now also uses the `id` of the documents instead of ignoring it.
+- Fixed `Neo4jVector.add_documents` failing with `Cannot merge the following node because of null property value for 'id'` when only some of the documents have an `id`; documents without one now get the MD5 hash of their text, as when none has an `id`. `Neo4jVector.from_documents` now also uses the `id` of the documents instead of ignoring it. ([#151](https://github.com/langchain-ai/langchain-neo4j/pull/151))
 
 ## 0.11.0
 
