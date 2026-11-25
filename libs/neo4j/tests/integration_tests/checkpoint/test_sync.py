@@ -8,6 +8,7 @@ from typing import Any, cast
 import pytest
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import Checkpoint, CheckpointMetadata
+from langgraph.checkpoint.serde.types import ERROR
 
 from langchain_neo4j import Neo4jSaver
 
@@ -141,6 +142,65 @@ class TestNeo4jSaver:
         write_channels = [w[1] for w in pending_writes]
         assert "messages" in write_channels
         assert "counter" in write_channels
+
+    def test_put_writes_twice_keeps_one_copy(
+        self,
+        clean_neo4j_saver: Neo4jSaver,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
+    ) -> None:
+        """Storing the writes of a task again does not duplicate them."""
+        config: RunnableConfig = {
+            "configurable": {
+                "thread_id": f"test-thread-{uuid.uuid4()}",
+                "checkpoint_ns": "",
+            }
+        }
+        result_config = clean_neo4j_saver.put(
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
+        )
+
+        clean_neo4j_saver.put_writes(result_config, [("counter", 1)], task_id="task-1")
+        # A retried task stores its writes again; the first value is kept.
+        clean_neo4j_saver.put_writes(result_config, [("counter", 2)], task_id="task-1")
+
+        tuple_ = clean_neo4j_saver.get_tuple(result_config)
+        assert tuple_ is not None
+        assert tuple_.pending_writes == [("task-1", "counter", 1)]
+
+    def test_put_writes_replaces_special_writes(
+        self,
+        clean_neo4j_saver: Neo4jSaver,
+        sample_checkpoint: dict[str, Any],
+        sample_metadata: dict[str, Any],
+    ) -> None:
+        """A special write, such as an error, is replaced by the latest one."""
+        config: RunnableConfig = {
+            "configurable": {
+                "thread_id": f"test-thread-{uuid.uuid4()}",
+                "checkpoint_ns": "",
+            }
+        }
+        result_config = clean_neo4j_saver.put(
+            config,
+            cast(Checkpoint, sample_checkpoint),
+            cast(CheckpointMetadata, sample_metadata),
+            {},
+        )
+
+        clean_neo4j_saver.put_writes(
+            result_config, [(ERROR, "first")], task_id="task-1"
+        )
+        clean_neo4j_saver.put_writes(
+            result_config, [(ERROR, "second")], task_id="task-1"
+        )
+
+        tuple_ = clean_neo4j_saver.get_tuple(result_config)
+        assert tuple_ is not None
+        assert tuple_.pending_writes == [("task-1", ERROR, "second")]
 
     def test_list_checkpoints(
         self,

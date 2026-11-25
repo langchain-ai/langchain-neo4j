@@ -7,6 +7,7 @@ from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
 from langgraph.checkpoint.base import (
+    WRITES_IDX_MAP,
     BaseCheckpointSaver,
     ChannelVersions,
     Checkpoint,
@@ -117,18 +118,25 @@ ON CREATE SET cs.type = $type, cs.blob = $blob
 CREATE (c)-[:HAS_CHANNEL]->(cs)
 """
 
-# Create PendingWrite and link to Checkpoint with HAS_WRITE relationship
+# Store a PendingWrite linked to its Checkpoint once per (task_id, idx), as LangGraph's
+# savers do: a write stored again (put_writes retried for the same task) keeps the
+# first value, while special writes (negative idx, such as errors and interrupts)
+# are replaced.
 CYPHER_UPSERT_WRITE = """
 MATCH (c:Checkpoint {checkpoint_id: $checkpoint_id})
-CREATE (w:PendingWrite {
-    task_id: $task_id,
-    task_path: $task_path,
-    idx: $idx,
-    channel: $channel,
-    type: $type,
-    blob: $blob
-})
-CREATE (c)-[:HAS_WRITE]->(w)
+MERGE (c)-[:HAS_WRITE]->(w:PendingWrite {task_id: $task_id, idx: $idx})
+ON CREATE SET
+    w.task_path = $task_path,
+    w.channel = $channel,
+    w.type = $type,
+    w.blob = $blob
+WITH w
+WHERE $idx < 0
+SET
+    w.task_path = $task_path,
+    w.channel = $channel,
+    w.type = $type,
+    w.blob = $blob
 """
 
 # Get checkpoint by ID with relationships
@@ -631,7 +639,7 @@ class BaseNeo4jSaver(BaseCheckpointSaver):
                 {
                     "task_id": task_id,
                     "task_path": task_path,
-                    "idx": idx,
+                    "idx": WRITES_IDX_MAP.get(channel, idx),
                     "channel": channel,
                     "type": blob_type,
                     "blob": blob_data,

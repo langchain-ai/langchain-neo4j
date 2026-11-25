@@ -2,6 +2,10 @@
 
 ## Next
 
+### Fixed
+
+- Made `Neo4jSaver.put_writes` and `AsyncNeo4jSaver.aput_writes` store each pending write once per task and index, as LangGraph's savers do, so a retried task no longer duplicates its writes, and special writes (errors, interrupts) get their reserved index and replace the previous one. ([#155](https://github.com/langchain-ai/langchain-neo4j/pull/155))
+
 ## 0.11.0
 
 ### Changed
