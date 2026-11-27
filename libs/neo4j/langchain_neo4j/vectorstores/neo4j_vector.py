@@ -12,6 +12,7 @@ from typing import (
     List,
     Literal,
     Optional,
+    Sequence,
     Tuple,
     Type,
 )
@@ -109,6 +110,22 @@ def dict_to_yaml_str(input_dict: Dict, indent: int = 0) -> str:
         else:
             yaml_str += f"{padding}{key}: {value}\n"
     return yaml_str
+
+
+def _ids_for_texts(
+    texts: List[str], ids: Optional[Sequence[Optional[str]]]
+) -> List[str]:
+    """Return the id given for each text, or the MD5 hash of a text without one.
+
+    `VectorStore.add_documents` passes the ids of the documents as soon as one of
+    them has an id, so documents without one come with `None`.
+    """
+    if ids is None:
+        return [md5(text.encode("utf-8")).hexdigest() for text in texts]
+    return [
+        id_ if id_ is not None else md5(text.encode("utf-8")).hexdigest()
+        for id_, text in zip(ids, texts)
+    ]
 
 
 class DataIngestionNotSupported(ValueError):
@@ -486,8 +503,7 @@ class Neo4jVector(VectorStore):
         search_type: SearchType = SearchType.VECTOR,
         **kwargs: Any,
     ) -> Neo4jVector:
-        if ids is None:
-            ids = [md5(text.encode("utf-8")).hexdigest() for text in texts]
+        ids = _ids_for_texts(texts, ids)
 
         if not metadatas:
             metadatas = [{} for _ in texts]
@@ -569,8 +585,8 @@ class Neo4jVector(VectorStore):
         if self._index_type == IndexType.RELATIONSHIP:
             raise DataIngestionNotSupported
 
-        if ids is None:
-            ids = [md5(text.encode("utf-8")).hexdigest() for text in texts]
+        texts = list(texts)
+        ids = _ids_for_texts(texts, ids)
 
         if not metadatas:
             metadatas = [{} for _ in texts]
@@ -1157,6 +1173,9 @@ class Neo4jVector(VectorStore):
 
         texts = [d.page_content for d in documents]
         metadatas = [d.metadata for d in documents]
+        # Like `VectorStore.from_documents`, use the ids of the documents
+        if ids is None and any(d.id for d in documents):
+            ids = _ids_for_texts(texts, [d.id for d in documents])
 
         return cls.from_texts(
             texts=texts,
